@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="logo_bg0">#FF4F8DFF</color>
+    <color name="logo_bg1">#FF00B8D9</color>
+    <color name="logo_bg2">#FF00C2A8</color>
+    <color name="logo_bg3">#FF3DDC84</color>
+    <color name="logo_bg4">#FFB5D334</color>
+    <color name="logo_bg5">#FFFFC233</color>
+    <color name="logo_bg6">#FFFF8A3D</color>
+    <color name="logo_bg7">#FFFF5A5F</color>
+    <color name="logo_bg8">#FFFF4FA3</color>
+    <color name="logo_bg9">#FFC064FF</color>
+    <color name="logo_bg10">#FF7C6CFF</color>
+    <color name="logo_bg11">#FF9AA0A6</color>
+</resources>
