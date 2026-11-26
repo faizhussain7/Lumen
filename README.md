@@ -24,6 +24,12 @@ Shapes that morph, motion driven by springs, and variable type, all on your home
 
 **[Features](#-features)** · **[Install](#-install)** · **[Permissions](#-permissions)** · **[Build](#-build-from-source)** · **[Contributing](#-contributing)** · **[Changelog](CHANGELOG.md)**
 
+<br>
+
+<a href="docs/video/lumen-film.mp4"><img src="docs/video/poster.jpg" width="720" alt="Watch the Lumen film"></a>
+
+<sub>▶ <a href="docs/video/lumen-film.mp4"><b>Watch the 2-minute film</b></a> · <a href="docs/video/lumen-teaser-vertical.mp4">34-second vertical teaser</a></sub>
+
 
 </div>
 
