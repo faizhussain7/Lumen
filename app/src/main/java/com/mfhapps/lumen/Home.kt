@@ -133,6 +133,8 @@ fun LumenHome(
     val slop = LocalViewConfiguration.current.touchSlop
     val drawer = remember { Animatable(0f) }
     val customise = remember { Animatable(0f) }
+    var onboarding by remember { mutableStateOf(!prefs.onboardedState.value) }
+    androidx.compose.runtime.LaunchedEffect(prefs.onboardedState.value) { if (!prefs.onboardedState.value) onboarding = true }
     val control = remember { Animatable(0f) }
     val context = LocalContext.current
     val device = remember { DeviceState(context) }
@@ -494,6 +496,7 @@ fun LumenHome(
             CustomisePage(catalog, prefs, { customise.value }, isDefaultHome) { scope.launch { customise.animateTo(0f, springs.close()) } }
         }
         menu?.let { (app, bounds, homeId) -> AppMenu(app, bounds, homeId, catalog, prefs, onDismiss = { menu = null }) }
+        if (onboarding) Onboarding(prefs, isDefaultHome) { onboarding = false }
         homeMenu?.let { pos ->
             HomeMenu(
                 pos,
@@ -572,9 +575,8 @@ private fun Island(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(if (floating) 58.dp else 48.dp)
-                .clip(CircleShape)
+                .tap(CircleShape, depth = 0.03f, onClick = onSearch)
                 .background(if (floating) scheme.surfaceContainerHigh.copy(alpha = 0.95f) else scheme.surfaceContainerHighest.copy(alpha = 0.85f))
-                .clickable(onClick = onSearch)
                 .padding(start = 18.dp, end = 6.dp),
         ) {
             Box(
@@ -584,22 +586,9 @@ private fun Island(
             Spacer(Modifier.width(12.dp))
             Text(stringResource(R.string.search), style = MaterialTheme.typography.bodyLarge, color = scheme.onSurfaceVariant, modifier = Modifier.weight(1f))
             val voiceContext = LocalContext.current
-            val hasLens = remember { voiceContext.packageManager.queryIntentActivities(Intent(Intent.ACTION_VIEW, android.net.Uri.parse("googleapp://lens")), 0).isNotEmpty() }
-            if (hasLens) Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier.size(38.dp).clip(CircleShape).clickable(onClickLabel = stringResource(R.string.lens)) {
-                    runCatching {
-                        voiceContext.startActivity(
-                            Intent(Intent.ACTION_VIEW, android.net.Uri.parse("googleapp://lens"))
-                                .setClassName("com.google.android.googlequicksearchbox", "com.google.android.apps.search.lens.deeplink.LensDeeplink")
-                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-                        )
-                    }.onFailure { runCatching { voiceContext.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse("googleapp://lens")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } }
-                },
-            ) { GlyphIcon(Glyph.Lens, scheme.onSurfaceVariant, 22.dp) }
             Box(
                 contentAlignment = Alignment.Center,
-                modifier = Modifier.size(38.dp).clip(CircleShape).clickable(onClickLabel = stringResource(R.string.voice_search)) {
+                modifier = Modifier.size(38.dp).tap(CircleShape, label = stringResource(R.string.voice_search), depth = 0.12f) {
                     runCatching { voiceContext.startActivity(Intent("android.speech.action.VOICE_SEARCH_HANDS_FREE").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
                         .onFailure { runCatching { voiceContext.startActivity(Intent(android.speech.RecognizerIntent.ACTION_WEB_SEARCH).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } }
                 },
@@ -609,9 +598,8 @@ private fun Island(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
                     .size(38.dp)
-                    .clip(PolygonShape(LumenShapes.softBurst))
-                    .background(scheme.primaryContainer)
-                    .clickable(onClick = onCustomise),
+                    .tap(PolygonShape(LumenShapes.softBurst), depth = 0.12f, onClick = onCustomise)
+                    .background(scheme.primaryContainer),
             ) {
                 SparkGlyph(scheme.onPrimaryContainer)
             }
@@ -834,7 +822,7 @@ private fun DrawerSheet(
                                 stringResource(R.string.search_web, query),
                                 style = MaterialTheme.typography.titleMedium,
                                 color = scheme.primary,
-                                modifier = Modifier.clip(RoundedCornerShape(20.dp)).clickable { webSearch(context, query) }.padding(16.dp),
+                                modifier = Modifier.tap(RoundedCornerShape(20.dp), depth = 0.04f) { webSearch(context, query) }.padding(16.dp),
                             )
                         }
                     }
@@ -1033,7 +1021,7 @@ private fun AppMenu(app: AppEntry, bounds: Rect?, homeId: String?, catalog: AppC
     val actions = buildList {
         add(ToolbarAction(Glyph.Info, context.getString(R.string.app_info)) { catalog.openInfo(app, bounds); onDismiss() })
         if (homeId != null) {
-            add(ToolbarAction(Glyph.Home, context.getString(R.string.remove_from_home), active = true) { prefs.updateHome(prefs.home.filter { it.id != homeId }); onDismiss() })
+            add(ToolbarAction(Glyph.Remove, context.getString(R.string.remove_from_home), danger = true) { prefs.updateHome(prefs.home.filter { it.id != homeId }); onDismiss() })
             val item = prefs.home.firstOrNull { it.id == homeId }
             val pages = prefs.pagesState.value
             if (item != null && pages > 1) {
@@ -1076,9 +1064,8 @@ private fun AppMenu(app: AppEntry, bounds: Rect?, homeId: String?, catalog: AppC
                             .graphicsLayer { alpha = enter; translationY = (1f - enter) * (if (above) 24.dp.toPx() else -24.dp.toPx()) }
                             .fillMaxWidth()
                             .height(58.dp)
-                            .clip(CircleShape)
+                            .tap(CircleShape, depth = 0.04f) { catalog.startShortcut(shortcut, bounds); onDismiss() }
                             .background(if (index == 0) scheme.primaryContainer else scheme.secondaryContainer)
-                            .clickable { catalog.startShortcut(shortcut, bounds); onDismiss() }
                             .padding(start = 8.dp, end = 20.dp),
                     ) {
                         val icon = remember(shortcut.id) { catalog.shortcutIcon(shortcut) }

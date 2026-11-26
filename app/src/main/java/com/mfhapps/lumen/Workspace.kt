@@ -21,7 +21,12 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.positionChange
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -64,8 +69,6 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.boundsInWindow
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -247,11 +250,11 @@ fun FolderSheet(
                             AppIcon(app, catalog, prefs, 54.dp, showLabel = true, labelColor = scheme.onSurface, onLaunch = { onDismiss(); onLaunch(app, it) }, onMenu = { editing = true }, modifier = Modifier.fillMaxWidth())
                             if (editing) Box(
                                 contentAlignment = Alignment.Center,
-                                modifier = Modifier.size(24.dp).clip(CircleShape).background(scheme.error).clickable {
+                                modifier = Modifier.size(24.dp).tap(CircleShape, depth = 0.15f) {
                                     val left = folder.apps - app.key
                                     if (left.size <= 1) dissolve(prefs, folder, left) else prefs.saveFolder(Folder(folder.id, title, left))
                                     if (left.size <= 1) onDismiss()
-                                },
+                                }.background(scheme.error),
                             ) { GlyphIcon(Glyph.Delete, scheme.onError, 14.dp) }
                         }
                     }
@@ -265,6 +268,10 @@ fun FolderSheet(
                 FabPill(stringResource(if (docked) R.string.remove_from_dock else R.string.add_to_dock), Glyph.Dock) {
                     val current = prefs.dock.orEmpty()
                     if (docked) prefs.updateDock(current - dockKey) else if (current.size < AppCatalog.DOCK_SIZE) prefs.updateDock(current + dockKey)
+                }
+                if (prefs.home.any { it.app == dockKey }) FabPill(stringResource(R.string.remove_from_home), Glyph.Remove, danger = true) {
+                    if (dockKey in prefs.dock.orEmpty()) prefs.updateHome(prefs.home.filter { it.app != dockKey }) else dissolve(prefs, folder, emptyList())
+                    onDismiss()
                 }
             }
         }
@@ -336,6 +343,7 @@ private fun PageGrid(
             val app = if (folder == null) item.app?.let { key -> catalog.apps.firstOrNull { it.key == key } } else null
             if (item.app != null && app == null && folder == null) return@forEach
             val isDragging = dragging == item.id
+            var cellBounds by remember(item.id) { mutableStateOf<android.graphics.Rect?>(null) }
             val lift by animateFloatAsState(if (isDragging) 1.08f else 1f, label = "lift")
             Box(
                 contentAlignment = Alignment.Center,
@@ -351,19 +359,37 @@ private fun PageGrid(
                         scaleX = lift
                         scaleY = lift
                     }
+                    .onGloballyPositioned { c ->
+                        val r = c.boundsInWindow()
+                        cellBounds = android.graphics.Rect(r.left.toInt(), r.top.toInt(), r.right.toInt(), r.bottom.toInt())
+                    }
                     .pointerInput(item.id, columns, rows) {
-                        detectDragGesturesAfterLongPress(
-                            onDragStart = {
-                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                dragging = item.id
-                                dragOffset = Offset.Zero
-                                GestureGate.dragging = true
-                            },
-                            onDrag = { change, amount ->
+                        val hold = viewConfiguration.longPressTimeoutMillis
+                        val slop = viewConfiguration.touchSlop
+                        awaitEachGesture {
+                            val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                            val early = withTimeoutOrNull(hold) {
+                                while (true) {
+                                    val change = awaitPointerEvent(PointerEventPass.Initial).changes.firstOrNull { it.id == down.id }
+                                    if (change == null || !change.pressed || (change.position - down.position).getDistance() > slop) break
+                                }
+                                true
+                            }
+                            if (early != null) return@awaitEachGesture
+                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                            dragging = item.id
+                            dragOffset = Offset.Zero
+                            GestureGate.dragging = true
+                            while (true) {
+                                val change = awaitPointerEvent(PointerEventPass.Initial).changes.firstOrNull { it.id == down.id } ?: break
+                                if (!change.pressed) {
+                                    change.consume()
+                                    break
+                                }
+                                dragOffset += change.positionChange()
                                 change.consume()
-                                dragOffset += amount
-                            },
-                            onDragEnd = {
+                            }
+
                                 val nx = (item.x + (dragOffset.x / cellW).roundToInt()).coerceIn(0, columns - item.w)
                                 val ny = (item.y + (dragOffset.y / cellH).roundToInt()).coerceIn(0, rows - item.h)
                                 val moved = kotlin.math.abs(dragOffset.x) + kotlin.math.abs(dragOffset.y) > 24.dp.toPx()
@@ -402,7 +428,7 @@ private fun PageGrid(
                                         }
                                     }
                                 } else if (app != null) {
-                                    onMenu(app, null, item.id)
+                                    onMenu(app, cellBounds, item.id)
                                 } else if (folder != null) {
                                     onOpenFolder(folder.id)
                                 } else {
@@ -411,13 +437,7 @@ private fun PageGrid(
                                 dragging = null
                                 dragOffset = Offset.Zero
                                 GestureGate.dragging = false
-                            },
-                            onDragCancel = {
-                                dragging = null
-                                dragOffset = Offset.Zero
-                                GestureGate.dragging = false
-                            },
-                        )
+                        }
                     },
             ) {
                 when {
@@ -515,7 +535,7 @@ private fun EditChip(text: String, primary: Boolean = false, onClick: () -> Unit
         text,
         style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
         color = if (primary) scheme.onPrimary else scheme.onSecondaryContainer,
-        modifier = Modifier.clip(CircleShape).background(if (primary) scheme.primary else scheme.secondaryContainer).clickable(onClick = onClick).padding(horizontal = 12.dp, vertical = 8.dp),
+        modifier = Modifier.tap(CircleShape, depth = 0.08f, onClick = onClick).background(if (primary) scheme.primary else scheme.secondaryContainer).padding(horizontal = 12.dp, vertical = 8.dp),
     )
 }
 
@@ -591,7 +611,7 @@ fun WidgetPicker(onPick: (AppWidgetProviderInfo) -> Unit, onBuiltIn: (Int) -> Un
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center,
-                            modifier = Modifier.fillMaxSize().maskClip(RoundedCornerShape(28.dp)).background(scheme.surfaceContainerHighest).clickable { onBuiltIn(id) }.padding(12.dp),
+                            modifier = Modifier.fillMaxSize().maskClip(RoundedCornerShape(28.dp)).tap(RoundedCornerShape(28.dp), depth = 0.04f) { onBuiltIn(id) }.background(scheme.surfaceContainerHighest).padding(12.dp),
                         ) {
                             Box(Modifier.size(140.dp), contentAlignment = Alignment.Center) {
                                 when (id) {
@@ -650,7 +670,7 @@ private fun WidgetCard(info: AppWidgetProviderInfo, onClick: () -> Unit) {
     val boxW = 210.dp
     val boxH = 150.dp
     Column(
-        Modifier.width(boxW + 24.dp).clip(RoundedCornerShape(22.dp)).background(scheme.surfaceContainerHighest).clickable(onClick = onClick).padding(12.dp),
+        Modifier.width(boxW + 24.dp).tap(RoundedCornerShape(22.dp), depth = 0.04f, onClick = onClick).background(scheme.surfaceContainerHighest).padding(12.dp),
     ) {
         Box(Modifier.size(boxW, boxH).clip(RoundedCornerShape(16.dp)).background(scheme.surfaceContainerLow), contentAlignment = Alignment.Center) {
             if (info.previewLayout != 0) {

@@ -17,7 +17,6 @@ import android.telephony.TelephonyManager
 import android.text.format.DateFormat
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -88,7 +87,7 @@ fun LumenStatusBar(prefs: LumenPrefs, ink: Color, modifier: Modifier = Modifier,
             Spacer(Modifier.width(2.dp))
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.clip(CircleShape).background(scheme.primary).clickable(onClick = onNotices).padding(start = 5.dp, end = 7.dp, top = 1.dp, bottom = 1.dp),
+                modifier = Modifier.tap(CircleShape, depth = 0.1f, onClick = onNotices).background(scheme.primary).padding(start = 5.dp, end = 7.dp, top = 1.dp, bottom = 1.dp),
             ) {
                 GlyphIcon(Glyph.Bell, scheme.onPrimary, 12.dp)
                 Spacer(Modifier.width(3.dp))

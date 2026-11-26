@@ -20,7 +20,6 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.core.graphics.drawable.toBitmap
@@ -161,6 +160,7 @@ class LockCover : ComponentActivity() {
 @OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun CoverScreen(prefs: LumenPrefs, device: DeviceState, onUnlock: () -> Unit, onCamera: () -> Unit, onOpen: (android.app.PendingIntent) -> Unit) {
+    val springs = LocalSprings.current
     val scheme = MaterialTheme.colorScheme
     val scope = rememberCoroutineScope()
     val lift = remember { Animatable(0f) }
@@ -252,7 +252,7 @@ private fun CoverScreen(prefs: LumenPrefs, device: DeviceState, onUnlock: () -> 
                 prefs.lockNoticesState.value == LockNotices.Icons && !showAll -> Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.clip(CircleShape).clickable { showAll = true }.padding(4.dp),
+                    modifier = Modifier.tap(CircleShape, depth = 0.05f) { showAll = true }.padding(4.dp),
                 ) {
                     notices.distinctBy { it.pkg }.take(6).forEach { notice -> NoticeIcon(notice.pkg, 32.dp) }
                     Text("${notices.size}", style = MaterialTheme.typography.labelLarge, color = Color.White)
@@ -275,10 +275,10 @@ private fun CoverScreen(prefs: LumenPrefs, device: DeviceState, onUnlock: () -> 
                     },
                     onDragEnd = {
                         if (lift.value > 0.15f) {
-                            scope.launch { lift.animateTo(1f) }
+                            scope.launch { lift.animateTo(1f, springs.fastEffects()) }
                             onUnlock()
                         } else {
-                            scope.launch { lift.animateTo(0f, androidx.compose.animation.core.spring(dampingRatio = 0.5f, stiffness = 300f)) }
+                            scope.launch { lift.animateTo(0f, springs.fastSpatial()) }
                         }
                     },
                 )
@@ -330,7 +330,7 @@ private fun CoverScreen(prefs: LumenPrefs, device: DeviceState, onUnlock: () -> 
                 if (prefs.lockFingerprintState.value) {
                     Box(
                         contentAlignment = Alignment.Center,
-                        modifier = Modifier.size(64.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.12f)).clickable(onClickLabel = stringResource(R.string.unlock_fingerprint)) { onUnlock() },
+                        modifier = Modifier.size(64.dp).tap(CircleShape, label = stringResource(R.string.unlock_fingerprint), depth = 0.1f) { onUnlock() }.background(Color.White.copy(alpha = 0.12f)),
                     ) {
                         androidx.compose.material3.Icon(Icons.Rounded.Fingerprint, contentDescription = null, tint = Color.White, modifier = Modifier.size(34.dp))
                     }
@@ -383,9 +383,9 @@ private fun NowBar(media: NowPlaying) {
         MediaButton(Icons.Rounded.SkipPrevious) { media.controller.transportControls.skipToPrevious() }
         Box(
             contentAlignment = Alignment.Center,
-            modifier = Modifier.size(width = 60.dp, height = 48.dp).clip(CircleShape).background(scheme.primary).clickable {
+            modifier = Modifier.size(width = 60.dp, height = 48.dp).tap(CircleShape, depth = 0.1f) {
                 if (media.playing) media.controller.transportControls.pause() else media.controller.transportControls.play()
-            },
+            }.background(scheme.primary),
         ) { androidx.compose.material3.Icon(if (media.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, contentDescription = null, tint = scheme.onPrimary) }
         MediaButton(Icons.Rounded.SkipNext) { media.controller.transportControls.skipToNext() }
     }
@@ -393,7 +393,7 @@ private fun NowBar(media: NowPlaying) {
 
 @Composable
 private fun MediaButton(icon: androidx.compose.ui.graphics.vector.ImageVector, onClick: () -> Unit) {
-    Box(contentAlignment = Alignment.Center, modifier = Modifier.size(44.dp).clip(CircleShape).clickable(onClick = onClick)) {
+    Box(contentAlignment = Alignment.Center, modifier = Modifier.size(44.dp).tap(CircleShape, depth = 0.12f, onClick = onClick)) {
         androidx.compose.material3.Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
     }
 }
@@ -417,8 +417,7 @@ private fun CoverButton(glyph: Glyph, active: Boolean, label: String, onClick: (
         contentAlignment = Alignment.Center,
         modifier = Modifier
             .size(64.dp)
-            .clip(if (active) PolygonShape(LumenShapes.clockBadge) else CircleShape)
-            .background(if (active) scheme.primary else Color.White.copy(alpha = 0.16f))
-            .clickable(onClickLabel = label, onClick = onClick),
+            .tap(if (active) PolygonShape(LumenShapes.clockBadge) else CircleShape, label = label, depth = 0.1f, onClick = onClick)
+            .background(if (active) scheme.primary else Color.White.copy(alpha = 0.16f)),
     ) { GlyphIcon(glyph, if (active) scheme.onPrimary else Color.White, 26.dp) }
 }

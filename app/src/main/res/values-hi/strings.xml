@@ -215,4 +215,30 @@
     <string name="weather_city_hint">शहर खोजें</string>
     <string name="weather_use_location">मेरी जगह इस्तेमाल करें</string>
     <plurals name="widget_count"><item quantity="one">%d विजेट</item><item quantity="other">%d विजेट</item></plurals>
+    <string name="onb_skip">छोड़ें</string>
+    <string name="onb_back">वापस</string>
+    <string name="onb_start">शुरू करें</string>
+    <string name="onb_next">आगे</string>
+    <string name="onb_finish">Lumen इस्तेमाल करें</string>
+    <string name="onb_welcome_title">Lumen में आपका स्वागत है</string>
+    <string name="onb_welcome_body">एक होम स्क्रीन जो चलती है, Material 3 Expressive पर बनी। सेटअप में करीब एक मिनट लगता है।</string>
+    <string name="onb_home_title">Lumen को अपना होम बनाएं</string>
+    <string name="onb_home_body">फिर होम बटन Lumen खोलेगा। आप कभी भी फ़ोन की सेटिंग में वापस बदल सकते हैं।</string>
+    <string name="onb_home_action">Lumen को होम ऐप बनाएं</string>
+    <string name="onb_home_done">Lumen आपका होम ऐप है</string>
+    <string name="onb_perm_title">कुछ वैकल्पिक सुविधाएं</string>
+    <string name="onb_perm_body">Lumen इनके बिना भी चलता है। सिर्फ़ वही चालू करें जो आप चाहें, बाद में कस्टमाइज़ में बदल सकते हैं।</string>
+    <string name="onb_perm_notices">सूचनाएं</string>
+    <string name="onb_perm_notices_why">ऐप आइकन पर बिंदु और कंट्रोल पैनल में आपकी सूचनाएं। कुछ भी आपके फ़ोन से बाहर नहीं जाता।</string>
+    <string name="onb_perm_weather">मौसम</string>
+    <string name="onb_perm_weather_why">होम स्क्रीन पर मौसम। सिर्फ़ अनुमानित लोकेशन, या बाद में कोई शहर चुनें।</string>
+    <string name="onb_perm_contacts">खोज में संपर्क</string>
+    <string name="onb_perm_contacts_why">खोज बार से लोगों को ढूंढें। आपके संपर्क आपके फ़ोन पर ही रहते हैं।</string>
+    <string name="onb_allow">अनुमति दें</string>
+    <string name="onb_on">चालू</string>
+    <string name="onb_yours_title">इसे अपना बनाएं</string>
+    <string name="onb_yours_body">अभी कुछ पसंदीदा चुनें। बाकी सब कस्टमाइज़ में है।</string>
+    <string name="onb_replay">स्वागत टूर फिर दिखाएं</string>
+    <string name="cus_search">सेटिंग खोजें</string>
+    <string name="cus_no_results">“%1$s” से कोई सेटिंग मेल नहीं खाती।</string>
 </resources>

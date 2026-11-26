@@ -215,4 +215,30 @@
     <string name="weather_city_hint">Rechercher une ville</string>
     <string name="weather_use_location">Utiliser ma position</string>
     <plurals name="widget_count"><item quantity="one">%d widget</item><item quantity="other">%d widgets</item></plurals>
+    <string name="onb_skip">Passer</string>
+    <string name="onb_back">Retour</string>
+    <string name="onb_start">C\'est parti</string>
+    <string name="onb_next">Suivant</string>
+    <string name="onb_finish">Commencer avec Lumen</string>
+    <string name="onb_welcome_title">Bienvenue dans Lumen</string>
+    <string name="onb_welcome_body">Un écran d\'accueil qui bouge, conçu avec Material 3 Expressive. La configuration prend environ une minute.</string>
+    <string name="onb_home_title">Faites de Lumen votre accueil</string>
+    <string name="onb_home_body">Le bouton Accueil ouvrira alors Lumen. Vous pourrez revenir en arrière à tout moment dans les paramètres du téléphone.</string>
+    <string name="onb_home_action">Définir Lumen comme accueil</string>
+    <string name="onb_home_done">Lumen est votre écran d\'accueil</string>
+    <string name="onb_perm_title">Quelques options facultatives</string>
+    <string name="onb_perm_body">Lumen fonctionne sans aucune d\'elles. Activez seulement ce que vous voulez ; vous pourrez changer d\'avis dans Personnaliser.</string>
+    <string name="onb_perm_notices">Notifications</string>
+    <string name="onb_perm_notices_why">Des pastilles sur les icônes et vos notifications dans le panneau de contrôle. Rien ne quitte votre téléphone.</string>
+    <string name="onb_perm_weather">Météo</string>
+    <string name="onb_perm_weather_why">La météo sur votre écran d\'accueil. Position approximative uniquement, ou choisissez une ville plus tard.</string>
+    <string name="onb_perm_contacts">Contacts dans la recherche</string>
+    <string name="onb_perm_contacts_why">Trouvez vos contacts depuis la barre de recherche. Ils restent sur votre téléphone.</string>
+    <string name="onb_allow">Autoriser</string>
+    <string name="onb_on">Activé</string>
+    <string name="onb_yours_title">À votre image</string>
+    <string name="onb_yours_body">Choisissez quelques favoris maintenant. Tout le reste se trouve dans Personnaliser.</string>
+    <string name="onb_replay">Revoir la visite d\'accueil</string>
+    <string name="cus_search">Rechercher un réglage</string>
+    <string name="cus_no_results">Aucun réglage ne correspond à « %1$s ».</string>
 </resources>

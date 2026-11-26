@@ -208,6 +208,7 @@ private fun TallClock(hours: String, minutes: String, scale: Float) {
 
 @Composable
 fun OrbitClock(size: Dp, showDate: Boolean = true) {
+    val springs = LocalSprings.current
     val scheme = MaterialTheme.colorScheme
     val now = rememberSeconds()
     val calendar = remember(now) { java.util.Calendar.getInstance().apply { timeInMillis = now } }
@@ -217,7 +218,7 @@ fun OrbitClock(size: Dp, showDate: Boolean = true) {
     val sweep = remember { Animatable(second) }
     LaunchedEffect(second) {
         val target = if (second < sweep.value - 30f) second + 60f else second
-        sweep.animateTo(target, androidx.compose.animation.core.spring(dampingRatio = 0.55f, stiffness = 400f))
+        sweep.animateTo(target, springs.fastSpatial())
         if (sweep.value >= 60f) sweep.snapTo(sweep.value - 60f)
     }
     val dial = remember { PolygonShape(LumenShapes.clockBadge) }
@@ -264,6 +265,7 @@ fun OrbitClock(size: Dp, showDate: Boolean = true) {
 @OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun TilesClock(hours: String, minutes: String, tile: Dp, weight: Int, width: Int) {
+    val springs = LocalSprings.current
     val scheme = MaterialTheme.colorScheme
     val digits = (hours.padStart(2, '0') + minutes).toList()
     val shapes = remember { listOf(LumenShapes.clockBadge, androidx.compose.material3.MaterialShapes.Clover4Leaf, androidx.compose.material3.MaterialShapes.Arch, androidx.compose.material3.MaterialShapes.Sunny).map { PolygonShape(it) } }
@@ -277,7 +279,7 @@ private fun TilesClock(hours: String, minutes: String, tile: Dp, weight: Int, wi
                     val spin = remember { Animatable(0f) }
                     LaunchedEffect(digit) {
                         spin.snapTo(-14f)
-                        spin.animateTo(0f, androidx.compose.animation.core.spring(dampingRatio = 0.4f, stiffness = 260f))
+                        spin.animateTo(0f, springs.spatial())
                     }
                     Box(
                         contentAlignment = Alignment.Center,

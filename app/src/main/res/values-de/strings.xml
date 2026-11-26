@@ -215,4 +215,30 @@
     <string name="weather_city_hint">Stadt suchen</string>
     <string name="weather_use_location">Meinen Standort verwenden</string>
     <plurals name="widget_count"><item quantity="one">%d Widget</item><item quantity="other">%d Widgets</item></plurals>
+    <string name="onb_skip">Überspringen</string>
+    <string name="onb_back">Zurück</string>
+    <string name="onb_start">Los geht\'s</string>
+    <string name="onb_next">Weiter</string>
+    <string name="onb_finish">Lumen verwenden</string>
+    <string name="onb_welcome_title">Willkommen bei Lumen</string>
+    <string name="onb_welcome_body">Ein Startbildschirm, der sich bewegt, gebaut mit Material 3 Expressive. Die Einrichtung dauert etwa eine Minute.</string>
+    <string name="onb_home_title">Lumen als Startbildschirm</string>
+    <string name="onb_home_body">Dann öffnet die Home-Taste Lumen. Du kannst jederzeit in den Einstellungen deines Telefons zurückwechseln.</string>
+    <string name="onb_home_action">Lumen als Start-App festlegen</string>
+    <string name="onb_home_done">Lumen ist deine Start-App</string>
+    <string name="onb_perm_title">Ein paar optionale Extras</string>
+    <string name="onb_perm_body">Lumen funktioniert auch ohne. Aktiviere nur, was du möchtest – du kannst es später unter Anpassen ändern.</string>
+    <string name="onb_perm_notices">Benachrichtigungen</string>
+    <string name="onb_perm_notices_why">Punkte an App-Symbolen und deine Benachrichtigungen im Kontrollzentrum. Nichts verlässt dein Telefon.</string>
+    <string name="onb_perm_weather">Wetter</string>
+    <string name="onb_perm_weather_why">Das Wetter auf deinem Startbildschirm. Nur ungefährer Standort, oder wähle später eine Stadt.</string>
+    <string name="onb_perm_contacts">Kontakte in der Suche</string>
+    <string name="onb_perm_contacts_why">Finde Personen über die Suchleiste. Deine Kontakte bleiben auf deinem Telefon.</string>
+    <string name="onb_allow">Erlauben</string>
+    <string name="onb_on">An</string>
+    <string name="onb_yours_title">Mach es zu deinem</string>
+    <string name="onb_yours_body">Wähle jetzt ein paar Favoriten. Alles andere findest du unter Anpassen.</string>
+    <string name="onb_replay">Willkommenstour erneut zeigen</string>
+    <string name="cus_search">Einstellungen durchsuchen</string>
+    <string name="cus_no_results">Keine Einstellung passt zu „%1$s“.</string>
 </resources>

@@ -1,7 +1,12 @@
-@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 
 package com.mfhapps.lumen
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import androidx.compose.ui.focus.focusRequester
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Intent
@@ -12,7 +17,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.horizontalScroll
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -32,6 +36,7 @@ import androidx.compose.foundation.layout.statusBarsIgnoringVisibility
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -103,72 +108,15 @@ fun CustomisePage(catalog: AppCatalog, prefs: LumenPrefs, progress: () -> Float,
         BloomBackground(Modifier.fillMaxSize())
         val listState = androidx.compose.foundation.lazy.rememberLazyListState()
         val jump = androidx.compose.runtime.rememberCoroutineScope()
-        val sections = listOf(
-            R.string.settings_clock, R.string.section_home, R.string.section_dock, R.string.settings_icons, R.string.section_drawer,
-            R.string.section_colours, R.string.section_gestures, R.string.settings_motion, R.string.settings_effects,
-            R.string.section_status, R.string.section_lock, R.string.section_app_icon, R.string.section_backup,
-        )
-        val base = 3 + if (isDefault) 0 else 1
-        val current by androidx.compose.runtime.remember { androidx.compose.runtime.derivedStateOf { (listState.firstVisibleItemIndex - base).coerceIn(0, sections.lastIndex) } }
-        LazyColumn(
-            state = listState,
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 120.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-            modifier = Modifier
-                .widthIn(max = 760.dp)
-                .fillMaxSize()
-                .windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.statusBarsIgnoringVisibility)
-                .navigationBarsPadding(),
-        ) {
-            item {
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(top = 12.dp, start = 8.dp)) {
-                    Column(Modifier.weight(1f)) {
-                        LumenWordmark(prefs.logoStyleState.value, 46.dp)
-                        DisplayTitle(stringResource(R.string.customise))
-                    }
-                }
-            }
-            if (!isDefault) {
-                item {
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp)).background(scheme.primaryContainer).padding(18.dp)) {
-                        Column(Modifier.weight(1f)) {
-                            Text(stringResource(R.string.default_banner_title), style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = scheme.onPrimaryContainer)
-                            Text(stringResource(R.string.default_banner_caption), style = MaterialTheme.typography.bodySmall, color = scheme.onPrimaryContainer.copy(alpha = 0.8f))
-                        }
-                        Spacer(Modifier.width(12.dp))
-                        Button(onClick = { runCatching { context.startActivity(Intent(Settings.ACTION_HOME_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } }, shape = CircleShape) { Text(stringResource(R.string.set_default)) }
-                    }
-                }
-            }
-            item { Preview(catalog, prefs) }
-            stickyHeader {
-                val tabScroll = androidx.compose.foundation.rememberScrollState()
-                val tabSpots = remember { HashMap<Int, Pair<Int, Int>>() }
-                val density = androidx.compose.ui.platform.LocalDensity.current
-                LaunchedEffect(current) {
-                    tabSpots[current]?.let { (x, w) ->
-                        val margin = with(density) { 48.dp.roundToPx() }
-                        val viewport = tabScroll.viewportSize
-                        val target = (x + w / 2 - viewport / 2).coerceIn(0, tabScroll.maxValue)
-                        if (x < tabScroll.value + margin || x + w > tabScroll.value + viewport - margin) tabScroll.animateScrollTo(target)
-                    }
-                }
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 6.dp)
-                        .clip(CircleShape)
-                        .background(scheme.surfaceContainerHigh.copy(alpha = 0.96f))
-                        .padding(6.dp)
-                        .horizontalScroll(tabScroll),
-                ) {
-                    ConnectedGroup(sections.indices.toList(), current, { stringResource(sections[it]) }, onPlaced = { i, x, w -> tabSpots[i] = x to w }) { index ->
-                        jump.launch { listState.animateScrollToItem(base + index) }
-                    }
-                }
-            }
-            item {
-                Card(stringResource(R.string.settings_clock)) {
+        var query by remember { mutableStateOf("") }
+        val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+        var searchFocused by remember { mutableStateOf(false) }
+        androidx.activity.compose.BackHandler(enabled = searchFocused) { focusManager.clearFocus() }
+        LaunchedEffect(listState.isScrollInProgress) { if (listState.isScrollInProgress) focusManager.clearFocus() }
+        var open by remember { androidx.compose.runtime.mutableIntStateOf(-1) }
+        val openedAt = remember { android.os.SystemClock.uptimeMillis() }
+        val sections: List<Section> = listOf(
+            Section(R.string.settings_clock, Glyph.Alarm, listOf(R.string.opt_size, R.string.opt_colour, R.string.opt_weather), listOf(R.string.opt_weight, R.string.opt_width, R.string.opt_show_date, R.string.opt_show_chips)) {
                     ClockStyle.entries.chunked(3).forEach { row ->
                         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp)) {
                             row.forEach { style -> ClockTile(style, prefs.clock == style, prefs, Modifier.weight(1f)) { prefs.updateClock(style) } }
@@ -185,10 +133,9 @@ fun CustomisePage(catalog: AppCatalog, prefs: LumenPrefs, progress: () -> Float,
                                 contentAlignment = Alignment.Center,
                                 modifier = Modifier
                                     .size(40.dp)
-                                    .clip(if (selected) PolygonShape(LumenShapes.clockBadge) else CircleShape)
+                                    .tap(if (selected) PolygonShape(LumenShapes.clockBadge) else CircleShape, depth = 0.12f) { prefs.set(prefs.clockColourState, colour) }
                                     .background(if (colour == 0) Brush.sweepGradient(listOf(scheme.primary, scheme.tertiary, scheme.secondary, scheme.primary)) else Brush.linearGradient(listOf(Color(colour), Color(colour))))
-                                    .border(1.dp, scheme.outlineVariant, if (selected) PolygonShape(LumenShapes.clockBadge) else CircleShape)
-                                    .clickable { prefs.set(prefs.clockColourState, colour) },
+                                    .border(1.dp, scheme.outlineVariant, if (selected) PolygonShape(LumenShapes.clockBadge) else CircleShape),
                             ) {}
                         }
                     }
@@ -196,11 +143,12 @@ fun CustomisePage(catalog: AppCatalog, prefs: LumenPrefs, progress: () -> Float,
                     val askLocation = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { granted ->
                         prefs.set(prefs.weatherState, granted)
                     }
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 1.5.dp).fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(scheme.surfaceContainerHigh).clickable {
+                    val weatherSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 1.5.dp).fillMaxWidth().listTap(rest = 8.dp, interaction = weatherSource) {
                         if (prefs.weatherState.value) prefs.set(prefs.weatherState, false)
                         else if (Weather.permitted(context)) prefs.set(prefs.weatherState, true)
                         else askLocation.launch(android.Manifest.permission.ACCESS_COARSE_LOCATION)
-                    }.padding(horizontal = 14.dp, vertical = 12.dp)) {
+                    }.background(scheme.surfaceContainerHigh).padding(horizontal = 14.dp, vertical = 12.dp)) {
                         Box(Modifier.size(40.dp).clip(CircleShape).background(scheme.tertiaryContainer), contentAlignment = Alignment.Center) { GlyphIcon(Glyph.Sun, scheme.onTertiaryContainer, 22.dp) }
                         Spacer(Modifier.width(14.dp))
                         Column(Modifier.weight(1f)) {
@@ -208,14 +156,12 @@ fun CustomisePage(catalog: AppCatalog, prefs: LumenPrefs, progress: () -> Float,
                             Text(stringResource(R.string.opt_weather_caption), style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant)
                         }
                         Spacer(Modifier.width(12.dp))
-                        Switch(checked = prefs.weatherState.value, onCheckedChange = null)
+                        Switch(checked = prefs.weatherState.value, onCheckedChange = null, interactionSource = weatherSource, thumbContent = if (prefs.weatherState.value) { { androidx.compose.material3.Icon(Icons.Rounded.Check, contentDescription = null, modifier = Modifier.size(androidx.compose.material3.SwitchDefaults.IconSize)) } } else null)
                     }
                     if (prefs.weatherState.value) WeatherSetup()
                     Toggle(stringResource(R.string.opt_show_chips), null, prefs.showChipsState, prefs)
-                }
-            }
-            item {
-                Card(stringResource(R.string.section_home)) {
+                },
+            Section(R.string.section_home, Glyph.Home, listOf(R.string.opt_home_columns, R.string.opt_pages, R.string.opt_icon_size), listOf(R.string.opt_home_rows, R.string.opt_home_labels, R.string.opt_badges)) {
                     Label(stringResource(R.string.opt_home_columns))
                     Choices((3..7).toList(), prefs.homeColumnsState.value, { "$it" }) { prefs.set(prefs.homeColumnsState, it) }
                     Label(stringResource(R.string.opt_pages))
@@ -226,17 +172,13 @@ fun CustomisePage(catalog: AppCatalog, prefs: LumenPrefs, progress: () -> Float,
                     Toggle(stringResource(R.string.opt_home_labels), null, prefs.homeLabelsState, prefs)
                     Toggle(stringResource(R.string.opt_badges), if (badgesGranted) null else stringResource(R.string.opt_badges_caption), prefs.badgesState, prefs)
                     if (!badgesGranted) FilledTonalButton(onClick = { Badges.requestAccess(context) }, shape = CircleShape) { Text(stringResource(R.string.opt_grant)) }
-                }
-            }
-            item {
-                Card(stringResource(R.string.section_dock)) {
+                },
+            Section(R.string.section_dock, Glyph.Dock, listOf(R.string.opt_dock_style, R.string.opt_dock_search), listOf()) {
                     Label(stringResource(R.string.opt_dock_style))
                     Choices(DockStyle.entries, prefs.dockStyleState.value, { stringResource(when (it) { DockStyle.Glass -> R.string.dock_glass; DockStyle.Solid -> R.string.dock_solid; DockStyle.Clear -> R.string.dock_clear; DockStyle.Hidden -> R.string.dock_hidden }) }) { prefs.set(prefs.dockStyleState, it) }
                     Toggle(stringResource(R.string.opt_dock_search), null, prefs.dockSearchState, prefs)
-                }
-            }
-            item {
-                Card(stringResource(R.string.settings_icons)) {
+                },
+            Section(R.string.settings_icons, Glyph.Widgets, listOf(R.string.settings_themed_icons, R.string.opt_icon_pack), listOf()) {
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         items(IconShape.entries) { shape ->
                             val selected = prefs.shape == shape
@@ -244,10 +186,9 @@ fun CustomisePage(catalog: AppCatalog, prefs: LumenPrefs, progress: () -> Float,
                                 contentAlignment = Alignment.Center,
                                 modifier = Modifier
                                     .size(64.dp)
-                                    .clip(RoundedCornerShape(20.dp))
+                                    .tap(RoundedCornerShape(20.dp), depth = 0.1f) { prefs.updateShape(shape) }
                                     .background(if (selected) scheme.primary.copy(alpha = 0.16f) else Color.Transparent)
-                                    .border(if (selected) 2.dp else 1.dp, if (selected) scheme.primary else scheme.outlineVariant, RoundedCornerShape(20.dp))
-                                    .clickable { prefs.updateShape(shape) },
+                                    .border(if (selected) 2.dp else 1.dp, if (selected) scheme.primary else scheme.outlineVariant, RoundedCornerShape(20.dp)),
                             ) {
                                 Box(Modifier.size(40.dp).clip(PolygonShape(LumenShapes.polygon(shape))).background(if (selected) scheme.primary else scheme.onSurfaceVariant.copy(alpha = 0.7f)))
                             }
@@ -258,10 +199,8 @@ fun CustomisePage(catalog: AppCatalog, prefs: LumenPrefs, progress: () -> Float,
                     Label(stringResource(R.string.opt_icon_pack))
                     Choices(listOf(IconPackInfo("", context.getString(R.string.opt_icon_pack_system))) + packs, packs.firstOrNull { it.packageName == prefs.iconPack } ?: IconPackInfo("", ""), { it.label }) { prefs.updateIconPack(it.packageName) }
                     if (packs.isEmpty()) Text(stringResource(R.string.opt_icon_pack_none), style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant)
-                }
-            }
-            item {
-                Card(stringResource(R.string.section_drawer)) {
+                },
+            Section(R.string.section_drawer, Glyph.Calculate, listOf(R.string.opt_sort, R.string.opt_categories, R.string.opt_hidden), listOf(R.string.settings_columns, R.string.opt_favourites, R.string.opt_drawer_labels)) {
                     Label(stringResource(R.string.settings_columns))
                     Choices(listOf(0, 4, 5, 6, 7), prefs.columns, { if (it == 0) stringResource(R.string.opt_auto) else "$it" }) { prefs.updateColumns(it) }
                     Label(stringResource(R.string.opt_sort))
@@ -278,10 +217,8 @@ fun CustomisePage(catalog: AppCatalog, prefs: LumenPrefs, progress: () -> Float,
                             hidden.forEach { app -> FilterChip(selected = true, onClick = { prefs.toggleHidden(app.key) }, label = { Text(app.label) }, shape = CircleShape) }
                         }
                     }
-                }
-            }
-            item {
-                Card(stringResource(R.string.section_colours)) {
+                },
+            Section(R.string.section_colours, Glyph.Wallpaper, listOf(R.string.opt_vivid, R.string.opt_accent_source), listOf(R.string.opt_wallpaper, R.string.opt_custom)) {
                     SliderRow(stringResource(R.string.opt_vivid), prefs.vividState.value) { prefs.set(prefs.vividState, it) }
                     Label(stringResource(R.string.opt_accent_source))
                     Choices(AccentSource.entries, prefs.accentSourceState.value, { stringResource(if (it == AccentSource.Wallpaper) R.string.opt_wallpaper else R.string.opt_custom) }) { prefs.set(prefs.accentSourceState, it) }
@@ -293,33 +230,26 @@ fun CustomisePage(catalog: AppCatalog, prefs: LumenPrefs, progress: () -> Float,
                                 Box(
                                     Modifier
                                         .size(44.dp)
-                                        .clip(if (selected) PolygonShape(LumenShapes.clockBadge) else CircleShape)
-                                        .background(Color(colour))
-                                        .clickable { prefs.set(prefs.accentState, colour) },
+                                        .tap(if (selected) PolygonShape(LumenShapes.clockBadge) else CircleShape, depth = 0.12f) { prefs.set(prefs.accentState, colour) }
+                                        .background(Color(colour)),
                                 )
                             }
                         }
                     }
-                }
-            }
-            item {
-                Card(stringResource(R.string.section_gestures)) {
+                },
+            Section(R.string.section_gestures, Glyph.Next, listOf(R.string.opt_swipe_up, R.string.opt_double_tap), listOf(R.string.opt_swipe_down, R.string.opt_pinch)) {
                     GestureRow(stringResource(R.string.opt_swipe_up), prefs.swipeUpState, prefs)
                     GestureRow(stringResource(R.string.opt_swipe_down), prefs.swipeDownState, prefs)
                     GestureRow(stringResource(R.string.opt_double_tap), prefs.doubleTapState, prefs)
                     GestureRow(stringResource(R.string.opt_pinch), prefs.pinchState, prefs)
-                }
-            }
-            item {
-                Card(stringResource(R.string.settings_motion)) {
+                },
+            Section(R.string.settings_motion, Glyph.Bolt, listOf(R.string.settings_bounce, R.string.settings_speed, R.string.settings_blur), listOf()) {
                     MotionDemo(prefs)
                     SliderRow(stringResource(R.string.settings_bounce), prefs.bounce) { prefs.updateBounce(it) }
                     SliderRow(stringResource(R.string.settings_speed), prefs.speed) { prefs.updateSpeed(it) }
                     SliderRow(stringResource(R.string.settings_blur), prefs.blur) { prefs.updateBlur(it) }
-                }
-            }
-            item {
-                Card(stringResource(R.string.settings_effects)) {
+                },
+            Section(R.string.settings_effects, Glyph.Sun, listOf(R.string.settings_glow, R.string.settings_wallpaper), listOf()) {
                     Toggle(stringResource(R.string.settings_glow), stringResource(R.string.settings_glow_caption), prefs.glowState, prefs)
                     Spacer(Modifier.height(8.dp))
                     FilledTonalButton(
@@ -327,31 +257,28 @@ fun CustomisePage(catalog: AppCatalog, prefs: LumenPrefs, progress: () -> Float,
                         shape = CircleShape,
                         modifier = Modifier.fillMaxWidth().height(52.dp),
                     ) { Text(stringResource(R.string.settings_wallpaper)) }
-                }
-            }
-            item {
-                Card(stringResource(R.string.section_status)) {
+                },
+            Section(R.string.section_status, Glyph.Data, listOf(R.string.opt_status_bar, R.string.opt_status_percent), listOf(R.string.settings_own_top)) {
                     Toggle(stringResource(R.string.settings_own_top), stringResource(R.string.settings_own_top_caption), prefs.ownTopState, prefs)
                     Toggle(stringResource(R.string.opt_status_bar), null, prefs.statusBarState, prefs)
                     Toggle(stringResource(R.string.opt_status_percent), null, prefs.statusPercentState, prefs)
-                }
-            }
-            item {
-                Card(stringResource(R.string.section_lock)) {
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().clickable {
+                },
+            Section(R.string.section_lock, Glyph.Lock, listOf(R.string.opt_lock_clock, R.string.opt_lock_notices, R.string.opt_lock_media), listOf(R.string.settings_lock, R.string.opt_lock_centre, R.string.opt_lock_widgets, R.string.opt_lock_fingerprint, R.string.opt_owner, R.string.opt_lock_left, R.string.opt_lock_right)) {
+                    val lockSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().listTap(rest = 8.dp, interaction = lockSource) {
                         val on = !prefs.lockCover
                         prefs.updateLockCover(on)
                         if (on && !LumenAccess.ready) {
                             Toast.makeText(context, R.string.access_needed, Toast.LENGTH_LONG).show()
                             LumenAccess.openSettings(context)
                         }
-                    }.padding(vertical = 10.dp)) {
+                    }.background(scheme.surfaceContainerHigh).padding(horizontal = 14.dp, vertical = 12.dp)) {
                         Column(Modifier.weight(1f)) {
                             Text(stringResource(R.string.settings_lock), style = MaterialTheme.typography.titleSmall, color = scheme.onSurface)
                             Text(stringResource(R.string.settings_lock_caption), style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant)
                         }
                         Spacer(Modifier.width(12.dp))
-                        Switch(checked = prefs.lockCover, onCheckedChange = null)
+                        Switch(checked = prefs.lockCover, onCheckedChange = null, interactionSource = lockSource, thumbContent = if (prefs.lockCover) { { androidx.compose.material3.Icon(Icons.Rounded.Check, contentDescription = null, modifier = Modifier.size(androidx.compose.material3.SwitchDefaults.IconSize)) } } else null)
                     }
                     Label(stringResource(R.string.opt_lock_clock))
                     Choices(ClockStyle.entries, prefs.lockClockState.value, { clockLabel(it) }) { prefs.set(prefs.lockClockState, it) }
@@ -378,11 +305,9 @@ fun CustomisePage(catalog: AppCatalog, prefs: LumenPrefs, progress: () -> Float,
                             modifier = Modifier.fillMaxWidth(),
                         )
                     }
-                }
-            }
-            item {
-                Card(stringResource(R.string.section_app_icon)) {
-                    LumenWordmark(prefs.logoStyleState.value, 80.dp, Color(LogoData.colours[prefs.logoPaletteState.value]))
+                },
+            Section(R.string.section_app_icon, Glyph.Spark, listOf(R.string.opt_icon_style, R.string.opt_icon_colour), listOf()) {
+                    LumenWordmark(64.dp, Color(LogoMarks.colours[prefs.logoPaletteState.value]), tile = true, ground = MaterialTheme.colorScheme.surfaceContainerLow)
                     Label(stringResource(R.string.opt_icon_style))
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         (0 until AppIcons.STYLES).forEach { style ->
@@ -391,37 +316,32 @@ fun CustomisePage(catalog: AppCatalog, prefs: LumenPrefs, progress: () -> Float,
                                 contentAlignment = Alignment.Center,
                                 modifier = Modifier
                                     .size(84.dp)
-                                    .clip(RoundedCornerShape(26.dp))
-                                    .background(Color(LogoData.colours[prefs.logoPaletteState.value]))
-                                    .border(if (on) 3.dp else 0.dp, if (on) scheme.onSurface else Color.Transparent, RoundedCornerShape(26.dp))
-                                    .clickable {
+                                    .tap(RoundedCornerShape(26.dp), depth = 0.1f) {
                                         prefs.set(prefs.logoStyleState, style)
                                         AppIcons.select(context, style, prefs.logoPaletteState.value)
-                                    },
-                            ) { LumenIcon(style, 60.dp, Color(LogoData.colours[prefs.logoPaletteState.value])) }
+                                    }
+                                    .border(if (on) 3.dp else 0.dp, if (on) scheme.onSurface else Color.Transparent, RoundedCornerShape(26.dp)),
+                            ) { LumenIcon(style, 84.dp, Color(LogoMarks.colours[prefs.logoPaletteState.value])) }
                         }
                     }
                     Label(stringResource(R.string.opt_icon_colour))
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        LogoData.colours.forEachIndexed { index, colour ->
+                        LogoMarks.colours.forEachIndexed { index, colour ->
                             val on = prefs.logoPaletteState.value == index
                             Box(
                                 Modifier
                                     .size(44.dp)
-                                    .clip(if (on) PolygonShape(LumenShapes.clockBadge) else CircleShape)
-                                    .background(Color(colour))
-                                    .clickable {
+                                    .tap(if (on) PolygonShape(LumenShapes.clockBadge) else CircleShape, depth = 0.12f) {
                                         prefs.set(prefs.logoPaletteState, index)
                                         AppIcons.select(context, prefs.logoStyleState.value, index)
-                                    },
+                                    }
+                                    .background(Color(colour)),
                             ) {}
                         }
                     }
                     Text(stringResource(R.string.opt_icon_note), style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant, modifier = Modifier.padding(top = 10.dp))
-                }
-            }
-            item {
-                Card(stringResource(R.string.section_backup)) {
+                },
+            Section(R.string.section_backup, Glyph.Info, listOf(R.string.opt_export, R.string.opt_restore), listOf(R.string.onb_replay)) {
                     FilledTonalButton(
                         onClick = {
                             context.getSystemService(ClipboardManager::class.java)?.setPrimaryClip(ClipData.newPlainText("Lumen", prefs.export()))
@@ -444,7 +364,72 @@ fun CustomisePage(catalog: AppCatalog, prefs: LumenPrefs, progress: () -> Float,
                         shape = CircleShape,
                         modifier = Modifier.fillMaxWidth().height(52.dp),
                     ) { Text(stringResource(R.string.opt_restore)) }
+                    Spacer(Modifier.height(8.dp))
+                    androidx.compose.material3.TextButton(onClick = { onClose(); prefs.set(prefs.onboardedState, false) }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.onb_replay)) }
+},
+        )
+        val q = query.trim().lowercase()
+        val keyText = remember(sections.size) { sections.map { sec -> (listOf(sec.title) + sec.summary + sec.extra).joinToString(" ") { context.getString(it) }.lowercase() } }
+        val visible = sections.indices.filter { q.isEmpty() || keyText[it].contains(q) }
+        LazyColumn(
+            state = listState,
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 120.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+            modifier = Modifier
+                .widthIn(max = 760.dp)
+                .fillMaxSize()
+                .windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.statusBarsIgnoringVisibility)
+                .navigationBarsPadding(),
+        ) {
+            item {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(top = 12.dp, start = 8.dp)) {
+                    Column(Modifier.weight(1f)) {
+                        LumenWordmark(40.dp)
+                        DisplayTitle(stringResource(R.string.customise))
+                    }
                 }
+            }
+            if (!isDefault) {
+                item {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp)).background(scheme.primaryContainer).padding(18.dp)) {
+                        Column(Modifier.weight(1f)) {
+                            Text(stringResource(R.string.default_banner_title), style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = scheme.onPrimaryContainer)
+                            Text(stringResource(R.string.default_banner_caption), style = MaterialTheme.typography.bodySmall, color = scheme.onPrimaryContainer.copy(alpha = 0.8f))
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Button(onClick = { runCatching { context.startActivity(Intent(Settings.ACTION_HOME_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } }, shape = CircleShape) { Text(stringResource(R.string.set_default)) }
+                    }
+                }
+            }
+            item {
+                CustomiseSearch(query, { query = it }, onFocus = { searchFocused = it }, onDone = { focusManager.clearFocus() })
+            }
+            if (q.isEmpty()) item { Preview(catalog, prefs) }
+            items(visible, key = { it }) { i ->
+                val section = sections[i]
+                SectionCard(
+                    section,
+                    expanded = q.isNotEmpty() || open == i,
+                    index = visible.indexOf(i),
+                    animateIn = remember { android.os.SystemClock.uptimeMillis() - openedAt < 900 },
+                    modifier = Modifier.animateItem(fadeInSpec = LocalSprings.current.effects(), placementSpec = LocalSprings.current.size(), fadeOutSpec = LocalSprings.current.effects()),
+                ) {
+                    focusManager.clearFocus()
+                    open = if (open == i) -1 else i
+                    if (open == i) jump.launch {
+                        kotlinx.coroutines.delay(420)
+                        val info = listState.layoutInfo
+                        val item = info.visibleItemsInfo.firstOrNull { it.key == i } ?: return@launch
+                        val viewEnd = info.viewportEndOffset - info.afterContentPadding
+                        val overflow = item.offset + item.size - viewEnd
+                        val room = item.offset - info.viewportStartOffset - 24
+                        val by = minOf(overflow, room)
+                        if (by > 0) listState.animateScrollBy(by.toFloat(), androidx.compose.animation.core.spring(dampingRatio = 1f, stiffness = 300f))
+                    }
+                }
+            }
+            if (visible.isEmpty()) item {
+                Text(stringResource(R.string.cus_no_results, query.trim()), style = MaterialTheme.typography.bodyLarge, color = scheme.onSurfaceVariant, modifier = Modifier.fillMaxWidth().padding(24.dp).stagger(0), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
             }
         }
         val scrolling = listState.isScrollInProgress
@@ -453,13 +438,107 @@ fun CustomisePage(catalog: AppCatalog, prefs: LumenPrefs, progress: () -> Float,
     }
 }
 
+class Section(val title: Int, val glyph: Glyph, val summary: List<Int>, val extra: List<Int>, val content: @Composable () -> Unit)
+
 @Composable
-private fun Card(title: String, content: @Composable () -> Unit) {
+private fun SectionCard(section: Section, expanded: Boolean, index: Int, animateIn: Boolean, modifier: Modifier = Modifier, onToggle: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
-    Column(Modifier.fillMaxWidth()) {
-        Text(title, style = flexStyle(24f, 850, 100, scheme.primary), modifier = Modifier.padding(start = 8.dp, top = 10.dp, bottom = 10.dp))
-        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp)).background(scheme.surfaceContainerLow.copy(alpha = 0.7f)).padding(horizontal = 10.dp, vertical = 10.dp)) {
-            content()
+    val springs = LocalSprings.current
+    val k by androidx.compose.animation.core.animateFloatAsState(if (expanded) 1f else 0f, springs.spatial(), label = "open")
+    val badge = remember { androidx.graphics.shapes.Morph(androidx.compose.material3.MaterialShapes.Circle, androidx.compose.material3.MaterialShapes.Cookie9Sided) }
+    val container by androidx.compose.animation.animateColorAsState(if (expanded) scheme.surfaceContainer else scheme.surfaceContainerLow.copy(alpha = 0.75f), springs.effects(), label = "card")
+    val corner by androidx.compose.animation.core.animateDpAsState(if (expanded) 32.dp else 26.dp, springs.size(), label = "corner")
+    Column(
+        modifier
+            .then(if (animateIn) Modifier.stagger(index) else Modifier)
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(corner))
+            .background(container),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth().listTap(rest = corner, label = stringResource(section.title), onClick = onToggle).padding(horizontal = 14.dp, vertical = 14.dp),
+        ) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(46.dp)
+                    .graphicsLayer { shape = MorphShape(badge, k, k * 40f); clip = true }
+                    .background(androidx.compose.ui.graphics.lerp(scheme.secondaryContainer, scheme.primary, k)),
+            ) { GlyphIcon(section.glyph, androidx.compose.ui.graphics.lerp(scheme.onSecondaryContainer, scheme.onPrimary, k), 24.dp) }
+            Spacer(Modifier.width(14.dp))
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(section.title), style = flexStyle(20f, (650 + 200 * k).toInt(), 100, scheme.onSurface))
+                Text(
+                    section.summary.map { stringResource(it) }.joinToString(" · "),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = scheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                )
+            }
+            Spacer(Modifier.width(8.dp))
+            Box(Modifier.size(32.dp).graphicsLayer { rotationZ = 90f * k }, contentAlignment = Alignment.Center) { GlyphIcon(Glyph.Next, scheme.onSurfaceVariant, 22.dp) }
+        }
+        androidx.compose.animation.AnimatedVisibility(
+            visible = expanded,
+            enter = androidx.compose.animation.expandVertically(springs.size(), expandFrom = Alignment.Top) + androidx.compose.animation.fadeIn(springs.effects()),
+            exit = androidx.compose.animation.shrinkVertically(springs.size(), shrinkTowards = Alignment.Top) + androidx.compose.animation.fadeOut(springs.fastEffects()),
+        ) {
+            Column(Modifier.fillMaxWidth().padding(start = 10.dp, end = 10.dp, bottom = 12.dp)) { section.content() }
+        }
+    }
+}
+
+@Composable
+private fun CustomiseSearch(query: String, onChange: (String) -> Unit, onFocus: (Boolean) -> Unit, onDone: () -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    val springs = LocalSprings.current
+    val source = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val focused by source.collectIsFocusedAsState()
+    LaunchedEffect(focused) { onFocus(focused) }
+    val active = focused || query.isNotEmpty()
+    val k by androidx.compose.animation.core.animateFloatAsState(if (active) 1f else 0f, springs.spatial(), label = "search")
+    val badge = remember { androidx.graphics.shapes.Morph(androidx.compose.material3.MaterialShapes.Circle, androidx.compose.material3.MaterialShapes.Cookie9Sided) }
+    val focus = remember { androidx.compose.ui.focus.FocusRequester() }
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height((56 + 4 * k).dp)
+            .graphicsLayer { scaleX = 0.97f + 0.03f * k; scaleY = scaleX }
+            .tap(CircleShape, depth = 0.02f) { focus.requestFocus() }
+            .background(androidx.compose.ui.graphics.lerp(scheme.surfaceContainerHigh, scheme.surfaceContainerHighest, k))
+            .border((1.5f * k).dp, scheme.primary.copy(alpha = 0.6f * k), CircleShape)
+            .padding(start = 8.dp, end = 10.dp),
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier.size(42.dp).graphicsLayer { shape = MorphShape(badge, k, k * 60f); clip = true }.background(androidx.compose.ui.graphics.lerp(scheme.secondaryContainer, scheme.primary, k)),
+        ) { GlyphIcon(Glyph.Search, androidx.compose.ui.graphics.lerp(scheme.onSecondaryContainer, scheme.onPrimary, k), 22.dp) }
+        Spacer(Modifier.width(12.dp))
+        Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+            if (query.isEmpty()) Text(stringResource(R.string.cus_search), style = MaterialTheme.typography.bodyLarge, color = scheme.onSurfaceVariant)
+            androidx.compose.foundation.text.BasicTextField(
+                value = query,
+                onValueChange = onChange,
+                singleLine = true,
+                interactionSource = source,
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Search),
+                keyboardActions = androidx.compose.foundation.text.KeyboardActions(onSearch = { onDone() }, onDone = { onDone() }),
+                textStyle = MaterialTheme.typography.bodyLarge.copy(color = scheme.onSurface),
+                cursorBrush = androidx.compose.ui.graphics.SolidColor(scheme.primary),
+                modifier = Modifier.fillMaxWidth().focusRequester(focus),
+            )
+        }
+        androidx.compose.animation.AnimatedVisibility(
+            visible = query.isNotEmpty(),
+            enter = androidx.compose.animation.scaleIn(springs.fastSpatial()) + androidx.compose.animation.fadeIn(),
+            exit = androidx.compose.animation.scaleOut(springs.fastSpatial()) + androidx.compose.animation.fadeOut(),
+        ) {
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(36.dp).tap(CircleShape, depth = 0.12f) { onChange("") }.background(scheme.surfaceContainerHigh)) {
+                androidx.compose.material3.Icon(Icons.Rounded.Close, contentDescription = null, tint = scheme.onSurface, modifier = Modifier.size(20.dp))
+            }
         }
     }
 }
@@ -483,24 +562,32 @@ private fun Toggle(title: String, caption: String?, state: MutableState<Boolean>
     val scheme = MaterialTheme.colorScheme
     val tones = listOf(scheme.primaryContainer to scheme.onPrimaryContainer, scheme.tertiaryContainer to scheme.onTertiaryContainer, scheme.secondaryContainer to scheme.onSecondaryContainer)
     val (fill, ink) = tones[(title.hashCode() and 0x7fffffff) % tones.size]
+    val source = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val springs = LocalSprings.current
+    val on by androidx.compose.animation.core.animateFloatAsState(if (state.value) 1f else 0f, springs.fastSpatial(), label = "on")
+    val badge = remember { androidx.graphics.shapes.Morph(androidx.compose.material3.MaterialShapes.Circle, androidx.compose.material3.MaterialShapes.Cookie9Sided) }
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .padding(vertical = 1.5.dp)
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
+            .listTap(rest = 8.dp, interaction = source) { prefs.set(state, !state.value) }
             .background(scheme.surfaceContainerHigh)
-            .clickable { prefs.set(state, !state.value) }
             .padding(horizontal = 14.dp, vertical = 12.dp),
     ) {
-        Box(Modifier.size(40.dp).clip(CircleShape).background(fill), contentAlignment = Alignment.Center) { GlyphIcon(glyph, ink, 22.dp) }
+        Box(Modifier.size(40.dp).graphicsLayer { shape = MorphShape(badge, on, on * 30f); clip = true }.background(fill), contentAlignment = Alignment.Center) { GlyphIcon(glyph, ink, 22.dp) }
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
             Text(title, style = MaterialTheme.typography.titleSmall, color = scheme.onSurface)
             if (caption != null) Text(caption, style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant)
         }
         Spacer(Modifier.width(12.dp))
-        Switch(checked = state.value, onCheckedChange = { prefs.set(state, it) })
+        Switch(
+            checked = state.value,
+            onCheckedChange = null,
+            interactionSource = source,
+            thumbContent = if (state.value) { { androidx.compose.material3.Icon(Icons.Rounded.Check, contentDescription = null, modifier = Modifier.size(androidx.compose.material3.SwitchDefaults.IconSize)) } } else null,
+        )
     }
 }
 
@@ -532,13 +619,19 @@ private fun GestureRow(title: String, state: MutableState<GestureAction>, prefs:
     var open by remember { mutableStateOf(false) }
     val scheme = MaterialTheme.colorScheme
     Box {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().clickable { open = true }.padding(vertical = 12.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().listTap(rest = 8.dp) { open = true }.padding(horizontal = 6.dp, vertical = 12.dp)) {
             Text(title, style = MaterialTheme.typography.titleSmall, color = scheme.onSurface, modifier = Modifier.weight(1f))
             Text(actionLabel(state.value), style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold), color = scheme.onSecondaryContainer, modifier = Modifier.clip(CircleShape).background(scheme.secondaryContainer).padding(horizontal = 14.dp, vertical = 8.dp))
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }, shape = RoundedCornerShape(20.dp)) {
             GestureAction.entries.forEach { action ->
-                DropdownMenuItem(text = { Text(actionLabel(action)) }, onClick = { prefs.set(state, action); open = false })
+                val chosen = state.value == action
+                DropdownMenuItem(
+                    text = { Text(actionLabel(action), fontWeight = if (chosen) FontWeight.SemiBold else null) },
+                    trailingIcon = if (chosen) { { androidx.compose.material3.Icon(Icons.Rounded.Check, contentDescription = null, tint = scheme.primary) } } else null,
+                    modifier = if (chosen) Modifier.padding(horizontal = 6.dp).clip(RoundedCornerShape(14.dp)).background(scheme.secondaryContainer) else Modifier,
+                    onClick = { prefs.set(state, action); open = false },
+                )
             }
         }
     }
@@ -614,10 +707,9 @@ private fun ClockTile(style: ClockStyle, selected: Boolean, prefs: LumenPrefs, m
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier
-            .clip(shape)
+            .tap(shape, depth = 0.05f, onClick = onClick)
             .background(if (selected) scheme.primaryContainer else scheme.surfaceContainerHighest)
             .border(if (selected) 2.dp else 0.dp, if (selected) scheme.primary else Color.Transparent, shape)
-            .clickable(onClick = onClick)
             .padding(vertical = 14.dp),
     ) {
         Box(Modifier.height(78.dp), contentAlignment = Alignment.Center) { MiniClock(style, big = false, prefs) }
@@ -723,7 +815,7 @@ private fun WeatherSetup() {
             results.forEach { r ->
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).clickable {
+                    modifier = Modifier.fillMaxWidth().listTap(rest = 14.dp) {
                         Weather.setManualPlace(context, r)
                         place = r
                         query = ""

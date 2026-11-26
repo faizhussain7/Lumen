@@ -5,6 +5,7 @@ package com.mfhapps.lumen
 import android.app.NotificationManager
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Alarm
+import androidx.compose.material.icons.rounded.RemoveCircleOutline
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Bluetooth
 import androidx.compose.material.icons.rounded.Bolt
@@ -62,7 +63,6 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -126,7 +126,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 
-enum class Glyph { Wifi, Data, Bluetooth, Torch, Moon, Rotate, Lock, Shot, Sun, Volume, Gear, Camera, Bell, Search, Spark, Alarm, Widgets, Wallpaper, Home, Info, Delete, Hide, Dock, Calculate, Person, Web, Bolt, Mic, Lens, Check, Location, Hotspot, Nfc, Airplane, Saver, Dark, Phone, Next, Back }
+enum class Glyph { Wifi, Data, Bluetooth, Torch, Moon, Rotate, Lock, Shot, Sun, Volume, Gear, Camera, Bell, Search, Spark, Alarm, Widgets, Wallpaper, Home, Info, Delete, Hide, Dock, Calculate, Person, Web, Bolt, Mic, Remove, Check, Location, Hotspot, Nfc, Airplane, Saver, Dark, Phone, Next, Back }
 
 class DeviceState(private val context: Context) {
     var wifi by mutableStateOf(false)
@@ -392,9 +392,8 @@ private fun RoundToggle(tile: Tile, index: Int, modifier: Modifier, onClick: () 
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(1f)
-                .graphicsLayer { this.shape = MorphShape(shape, morph, morph * 22f); clip = true }
-                .background(androidx.compose.ui.graphics.lerp(scheme.surfaceContainerHighest, fill, morph))
-                .clickable(onClickLabel = tile.title, onClick = onClick),
+                .tap(MorphShape(shape, morph, morph * 22f), label = tile.title, depth = 0.1f, onClick = onClick)
+                .background(androidx.compose.ui.graphics.lerp(scheme.surfaceContainerHighest, fill, morph)),
         ) { GlyphIcon(tile.glyph, androidx.compose.ui.graphics.lerp(scheme.onSurface, ink, morph), 28.dp) }
         Spacer(Modifier.height(6.dp))
         Text(tile.title, style = MaterialTheme.typography.labelSmall.copy(lineHeight = 13.sp), color = scheme.onSurfaceVariant, maxLines = 2, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
@@ -414,9 +413,8 @@ private fun TileView(tile: Tile, modifier: Modifier, onClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
             .height(76.dp)
-            .clip(RoundedCornerShape(corner))
+            .tap(RoundedCornerShape(corner), depth = 0.04f, onClick = onClick)
             .background(fill)
-            .clickable(onClick = onClick)
             .padding(horizontal = 14.dp),
     ) {
         Box(
@@ -509,7 +507,7 @@ fun Glyph.vector(): androidx.compose.ui.graphics.vector.ImageVector = when (this
     Glyph.Web -> Icons.Rounded.Public
     Glyph.Bolt -> Icons.Rounded.Bolt
     Glyph.Mic -> Icons.Rounded.Mic
-    Glyph.Lens -> Icons.Rounded.CenterFocusStrong
+    Glyph.Remove -> Icons.Rounded.RemoveCircleOutline
     Glyph.Check -> Icons.Rounded.Check
     Glyph.Location -> Icons.Rounded.LocationOn
     Glyph.Hotspot -> Icons.Rounded.WifiTethering

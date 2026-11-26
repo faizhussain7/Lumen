@@ -31,6 +31,11 @@ class MainActivity : ComponentActivity() {
         window.isStatusBarContrastEnforced = false
         window.setBackgroundDrawable(ColorDrawable(0))
         prefs = LumenPrefs(this)
+        if (prefs.iconSetState.value != AppIcons.SET) {
+            prefs.set(prefs.logoStyleState, 0)
+            AppIcons.select(this, 0, prefs.logoPaletteState.value)
+            prefs.set(prefs.iconSetState, AppIcons.SET)
+        }
         Widgets.init(this)
         catalog = AppCatalog(this, lifecycleScope)
         catalog.start()

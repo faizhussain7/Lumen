@@ -1,6 +1,9 @@
 <div align="center">
 
-<img src="docs/logo.svg" alt="Lumen" width="400">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/logo-dark.svg">
+  <img src="docs/logo.svg" alt="Lumen" width="420">
+</picture>
 
 ### A designer launcher for Android, built entirely on Material 3 Expressive.
 
@@ -21,15 +24,6 @@ Shapes that morph, motion driven by springs, and variable type, all on your home
 
 **[Features](#-features)** · **[Install](#-install)** · **[Permissions](#-permissions)** · **[Build](#-build-from-source)** · **[Contributing](#-contributing)** · **[Changelog](CHANGELOG.md)**
 
-<br>
-
-<img src="docs/screenshots/home.png" width="19%" alt="Home screen">
-<img src="docs/screenshots/panel.png" width="19%" alt="Control panel">
-<img src="docs/screenshots/search.png" width="19%" alt="Search">
-<img src="docs/screenshots/customise.png" width="19%" alt="Customise">
-<img src="docs/screenshots/app-icon.png" width="19%" alt="App icon picker">
-
-<sub>Home · Control panel · Search · Customise · App icons</sub>
 
 </div>
 
@@ -54,7 +48,7 @@ No accounts, analytics or ads. Everything stays on your phone. The only network 
 <td width="33%" valign="top">
 
 **Yours to shape**<br>
-Around 50 options, icon packs, folders, up to five pages, 72 app icons and a backup you can restore. Change almost anything without leaving the launcher.
+Around 50 options, icon packs, folders, up to five pages, 48 app icons and a backup you can restore. Change almost anything without leaving the launcher.
 
 </td>
 </tr>
@@ -71,7 +65,7 @@ Around 50 options, icon packs, folders, up to five pages, 72 app icons and a bac
 - **Folders**: drop one app onto another to make a folder. Rename it, take apps out, or move it into the dock.
 - Built-in **Lumen widgets** (clock, weather, date and battery ring), and any app's widgets through a carousel picker.
 - **Glance chips** for your next alarm and battery, and **weather** from your location or a city you choose.
-- A floating dock, a search pill with voice and Google Lens, and Lumen's own status bar.
+- A floating dock, a search pill with voice search, and Lumen's own status bar.
 
 </details>
 
@@ -116,7 +110,7 @@ Around 50 options, icon packs, folders, up to five pages, 72 app icons and a bac
 - **Icon packs** in the ADW, Nova, GO, Apex, Teslacoil or Lawnchair formats, plus themed icons and several icon shapes.
 - Grid size, dock style, drawer sorting, hidden apps, gestures, blur, colour intensity and custom accent colours.
 - Motion **bounce and speed** controls, with predictive back and staggered entry.
-- **72 app icons**: six calligraphy logo styles in twelve solid colours, each with a monochrome layer for themed icons.
+- **48 app icons**: four Lumen marks (Lit Corner filled and open, Overlap and Glint) in twelve colours, each with a monochrome layer for themed icons.
 - **Back up and restore** all your settings as a single file.
 
 </details>
@@ -209,7 +203,7 @@ To add a language, copy `app/src/main/res/values/strings.xml` into `values-<code
 ## ✦ Credits
 
 - [Material 3 Expressive](https://m3.material.io/), the design language and shape catalogue by Google.
-- [Roboto Flex](https://github.com/googlefonts/roboto-flex), and the script typefaces behind the logo outlines: Great Vibes, Parisienne, Alex Brush, Pinyon Script, Allura and Monsieur La Doulaise. All are under the SIL Open Font License.
+- [Roboto Flex](https://github.com/googlefonts/roboto-flex), under the SIL Open Font License.
 - Material Symbols icons through AndroidX, under the Apache License 2.0.
 - [Weather data by Open-Meteo.com](https://open-meteo.com/), under CC BY 4.0.
 

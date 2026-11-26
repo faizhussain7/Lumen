@@ -12,4 +12,16 @@
     <color name="logo_bg9">#FFC064FF</color>
     <color name="logo_bg10">#FF7C6CFF</color>
     <color name="logo_bg11">#FF9AA0A6</color>
+    <color name="logo_tint0">#FFE6EFFF</color>
+    <color name="logo_tint1">#FFDBF5FA</color>
+    <color name="logo_tint2">#FFDBF6F3</color>
+    <color name="logo_tint3">#FFE4FAEE</color>
+    <color name="logo_tint4">#FFF5F9E3</color>
+    <color name="logo_tint5">#FFFFF6E2</color>
+    <color name="logo_tint6">#FFFFEFE4</color>
+    <color name="logo_tint7">#FFFFE8E9</color>
+    <color name="logo_tint8">#FFFFE6F2</color>
+    <color name="logo_tint9">#FFF6E9FF</color>
+    <color name="logo_tint10">#FFEDEAFF</color>
+    <color name="logo_tint11">#FFF1F2F3</color>
 </resources>

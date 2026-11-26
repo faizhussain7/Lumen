@@ -215,4 +215,30 @@
     <string name="weather_city_hint">Busca una ciudad</string>
     <string name="weather_use_location">Usar mi ubicación</string>
     <plurals name="widget_count"><item quantity="one">%d widget</item><item quantity="other">%d widgets</item></plurals>
+    <string name="onb_skip">Omitir</string>
+    <string name="onb_back">Atrás</string>
+    <string name="onb_start">Empezar</string>
+    <string name="onb_next">Siguiente</string>
+    <string name="onb_finish">Empezar a usar Lumen</string>
+    <string name="onb_welcome_title">Te damos la bienvenida a Lumen</string>
+    <string name="onb_welcome_body">Una pantalla de inicio que se mueve, creada con Material 3 Expressive. Configurarla lleva un minuto.</string>
+    <string name="onb_home_title">Haz de Lumen tu inicio</string>
+    <string name="onb_home_body">Así el botón de inicio abrirá Lumen. Puedes volver a cambiarlo cuando quieras en los ajustes del teléfono.</string>
+    <string name="onb_home_action">Usar Lumen como app de inicio</string>
+    <string name="onb_home_done">Lumen es tu app de inicio</string>
+    <string name="onb_perm_title">Algunos extras opcionales</string>
+    <string name="onb_perm_body">Lumen funciona sin ninguno de ellos. Activa solo los que quieras; puedes cambiarlos después en Personalizar.</string>
+    <string name="onb_perm_notices">Notificaciones</string>
+    <string name="onb_perm_notices_why">Puntos en los iconos y tus notificaciones en el panel de control. Nada sale de tu teléfono.</string>
+    <string name="onb_perm_weather">Tiempo</string>
+    <string name="onb_perm_weather_why">El tiempo en tu pantalla de inicio. Solo ubicación aproximada, o elige una ciudad más tarde.</string>
+    <string name="onb_perm_contacts">Contactos en la búsqueda</string>
+    <string name="onb_perm_contacts_why">Encuentra personas desde la barra de búsqueda. Tus contactos se quedan en tu teléfono.</string>
+    <string name="onb_allow">Permitir</string>
+    <string name="onb_on">Activado</string>
+    <string name="onb_yours_title">Hazlo tuyo</string>
+    <string name="onb_yours_body">Elige algunos favoritos ahora. Todo lo demás está en Personalizar.</string>
+    <string name="onb_replay">Ver la bienvenida otra vez</string>
+    <string name="cus_search">Buscar ajustes</string>
+    <string name="cus_no_results">Ningún ajuste coincide con «%1$s».</string>
 </resources>

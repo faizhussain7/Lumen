@@ -233,9 +233,8 @@ private fun Chip(text: String, glyph: @Composable () -> Unit, onClick: () -> Uni
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
-            .clip(CircleShape)
+            .tap(CircleShape, onClick = onClick)
             .background(scheme.secondaryContainer.copy(alpha = 0.82f))
-            .clickable(onClick = onClick)
             .padding(start = 12.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
     ) {
         glyph()

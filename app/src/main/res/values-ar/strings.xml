@@ -215,4 +215,30 @@
     <string name="weather_city_hint">ابحث عن مدينة</string>
     <string name="weather_use_location">استخدام موقعي</string>
     <plurals name="widget_count"><item quantity="zero">%d أدوات</item><item quantity="one">%d أداة</item><item quantity="two">%d أدوات</item><item quantity="few">%d أدوات</item><item quantity="many">%d أدوات</item><item quantity="other">%d أدوات</item></plurals>
+    <string name="onb_skip">تخطٍّ</string>
+    <string name="onb_back">رجوع</string>
+    <string name="onb_start">لنبدأ</string>
+    <string name="onb_next">التالي</string>
+    <string name="onb_finish">ابدأ استخدام Lumen</string>
+    <string name="onb_welcome_title">مرحبًا بك في Lumen</string>
+    <string name="onb_welcome_body">شاشة رئيسية تتحرك، مبنية على Material 3 Expressive. يستغرق الإعداد دقيقة تقريبًا.</string>
+    <string name="onb_home_title">اجعل Lumen شاشتك الرئيسية</string>
+    <string name="onb_home_body">عندها سيفتح زر الصفحة الرئيسية Lumen. يمكنك التبديل في أي وقت من إعدادات هاتفك.</string>
+    <string name="onb_home_action">تعيين Lumen كتطبيق رئيسي</string>
+    <string name="onb_home_done">Lumen هو تطبيقك الرئيسي</string>
+    <string name="onb_perm_title">إضافات اختيارية</string>
+    <string name="onb_perm_body">يعمل Lumen دون أيٍّ منها. فعّل ما تريده فقط، ويمكنك تغييرها لاحقًا من التخصيص.</string>
+    <string name="onb_perm_notices">الإشعارات</string>
+    <string name="onb_perm_notices_why">نقاط على أيقونات التطبيقات وإشعاراتك في لوحة التحكم. لا شيء يغادر هاتفك.</string>
+    <string name="onb_perm_weather">الطقس</string>
+    <string name="onb_perm_weather_why">الطقس على شاشتك الرئيسية. موقع تقريبي فقط، أو اختر مدينة لاحقًا.</string>
+    <string name="onb_perm_contacts">جهات الاتصال في البحث</string>
+    <string name="onb_perm_contacts_why">ابحث عن الأشخاص من شريط البحث. تبقى جهات اتصالك على هاتفك.</string>
+    <string name="onb_allow">سماح</string>
+    <string name="onb_on">مفعّل</string>
+    <string name="onb_yours_title">اجعله لك</string>
+    <string name="onb_yours_body">اختر بعض المفضلات الآن. كل شيء آخر موجود في التخصيص.</string>
+    <string name="onb_replay">عرض جولة الترحيب</string>
+    <string name="cus_search">البحث في الإعدادات</string>
+    <string name="cus_no_results">لا توجد إعدادات تطابق «%1$s».</string>
 </resources>

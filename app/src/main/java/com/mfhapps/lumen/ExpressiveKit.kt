@@ -66,7 +66,7 @@ fun FabClose(onClick: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
     Box(
         contentAlignment = Alignment.Center,
-        modifier = Modifier.size(56.dp).clip(CircleShape).background(scheme.primary).clickable(onClick = onClick),
+        modifier = Modifier.size(56.dp).tap(CircleShape, depth = 0.1f, onClick = onClick).background(scheme.primary),
     ) {
         androidx.compose.material3.Icon(Icons.Rounded.Close, contentDescription = null, tint = scheme.onPrimary)
     }

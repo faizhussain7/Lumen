@@ -16,7 +16,6 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -174,7 +173,7 @@ fun SearchResults(
         if (calc != null) {
             item(key = "calc") {
                 Column(
-                    Modifier.stagger(index++).fillMaxWidth().clip(RoundedCornerShape(28.dp)).background(scheme.tertiaryContainer).clickable { copy(context, calc) }.padding(20.dp),
+                    Modifier.stagger(index++).fillMaxWidth().tap(RoundedCornerShape(28.dp), depth = 0.03f) { copy(context, calc) }.background(scheme.tertiaryContainer).padding(20.dp),
                 ) {
                     Text(stringResource(R.string.search_section_calc), style = MaterialTheme.typography.labelLarge, color = scheme.onTertiaryContainer.copy(alpha = 0.75f))
                     Text("= $calc", style = flexStyle(34f, 900, 100, scheme.onTertiaryContainer))
@@ -226,10 +225,10 @@ fun SearchResults(
             item(key = "con") {
                 ResultGroup(Modifier.stagger(index++)) {
                     contacts.forEach { c ->
-                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().clickable {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().listTap {
                             saveRecent()
                             runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, ContentUris.withAppendedId(ContactsContract.Contacts.CONTENT_URI, c.id)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
-                        }.padding(horizontal = 16.dp, vertical = 10.dp)) {
+                        }.background(scheme.surfaceContainerHigh.copy(alpha = 0.85f)).padding(horizontal = 16.dp, vertical = 10.dp)) {
                             Box(Modifier.size(40.dp).clip(PolygonShape(LumenShapes.clockBadge)).background(scheme.tertiaryContainer), contentAlignment = Alignment.Center) {
                                 Text(c.name.take(1).uppercase(), style = MaterialTheme.typography.titleMedium, color = scheme.onTertiaryContainer)
                             }
@@ -269,13 +268,13 @@ private fun openSetting(context: android.content.Context, action: String, query:
 
 @Composable
 private fun ResultGroup(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    Column(modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp)).background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.75f))) { content() }
+    Column(modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)), verticalArrangement = Arrangement.spacedBy(2.dp)) { content() }
 }
 
 @Composable
 private fun IconBubble(glyph: Glyph, onClick: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
-    Box(Modifier.size(40.dp).clip(CircleShape).background(scheme.primaryContainer).clickable(onClick = onClick), contentAlignment = Alignment.Center) {
+    Box(Modifier.size(40.dp).tap(CircleShape, depth = 0.12f, onClick = onClick).background(scheme.primaryContainer), contentAlignment = Alignment.Center) {
         GlyphIcon(glyph, scheme.onPrimaryContainer, 20.dp)
     }
 }
@@ -293,7 +292,7 @@ private fun SectionLabel(text: String) {
 @Composable
 private fun ResultRow(title: String, initial: String?, glyph: Glyph?, search: Boolean = false, badge: String? = null, onClick: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 12.dp)) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().listTap(onClick = onClick).background(scheme.surfaceContainerHigh.copy(alpha = 0.85f)).padding(horizontal = 16.dp, vertical = 12.dp)) {
         Box(Modifier.size(40.dp).clip(CircleShape).background(scheme.surfaceContainerHighest), contentAlignment = Alignment.Center) {
             when {
                 badge != null -> AppBadge(badge, 40.dp)

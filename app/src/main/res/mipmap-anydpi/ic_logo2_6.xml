@@ -1,2 +1,2 @@
 <?xml version="1.0" encoding="utf-8"?>
-<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android"><background android:drawable="@color/logo_bg6"/><foreground android:drawable="@drawable/ic_logo2_6_fg"/><monochrome android:drawable="@drawable/ic_logo2_mono"/></adaptive-icon>
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android"><background android:drawable="@color/logo_tint6"/><foreground android:drawable="@drawable/ic_logo2_6_fg"/><monochrome android:drawable="@drawable/ic_logo2_mono"/></adaptive-icon>

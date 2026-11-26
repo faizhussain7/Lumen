@@ -85,7 +85,7 @@ private fun GroupHeader(group: NoticeGroup, open: Boolean, onToggle: () -> Unit)
     val scheme = MaterialTheme.colorScheme
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.padding(vertical = 1.5.dp).fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(scheme.surfaceContainerHigh.copy(alpha = 0.92f)).clickable(onClick = onToggle).padding(12.dp),
+        modifier = Modifier.padding(vertical = 1.5.dp).fillMaxWidth().listTap(rest = 10.dp, onClick = onToggle).background(scheme.surfaceContainerHigh.copy(alpha = 0.92f)).padding(12.dp),
     ) {
         AppBadge(group.pkg, 36.dp)
         Spacer(Modifier.size(12.dp))
@@ -101,6 +101,7 @@ private fun GroupHeader(group: NoticeGroup, open: Boolean, onToggle: () -> Unit)
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun SwipeNotice(notice: Notice, onOpen: (PendingIntent) -> Unit, modifier: Modifier = Modifier) {
+    val springs = LocalSprings.current
     val scheme = MaterialTheme.colorScheme
     val context = LocalContext.current
     val haptics = LocalHapticFeedback.current
@@ -130,7 +131,7 @@ fun SwipeNotice(notice: Notice, onOpen: (PendingIntent) -> Unit, modifier: Modif
                                     LumenNotifications.dismiss(notice.key)
                                 }
                             } else {
-                                scope.launch { offset.animateTo(0f, androidx.compose.animation.core.spring(dampingRatio = 0.55f, stiffness = 500f)) }
+                                scope.launch { offset.animateTo(0f, springs.fastSpatial()) }
                             }
                         },
                     )
@@ -172,13 +173,13 @@ fun SwipeNotice(notice: Notice, onOpen: (PendingIntent) -> Unit, modifier: Modif
                         }
                         Box(
                             contentAlignment = Alignment.Center,
-                            modifier = Modifier.size(42.dp).clip(CircleShape).background(scheme.primary).clickable {
+                            modifier = Modifier.size(42.dp).tap(CircleShape, depth = 0.12f) {
                                 if (reply.isNotBlank()) {
                                     sendReply(context, action, reply)
                                     reply = ""
                                     replyTo = null
                                 }
-                            },
+                            }.background(scheme.primary),
                         ) { androidx.compose.material3.Icon(Icons.AutoMirrored.Rounded.Send, contentDescription = null, tint = scheme.onPrimary, modifier = Modifier.size(20.dp)) }
                     }
                 }
