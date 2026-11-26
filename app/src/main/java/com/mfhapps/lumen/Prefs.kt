@@ -116,6 +116,11 @@ class LumenPrefs(context: Context) {
         store.edit().putString("recents", recents.joinToString("\u0001")).apply()
     }
 
+    fun removeRecent(text: String) {
+        recents = recents.filter { it != text }
+        store.edit().putString("recents", recents.joinToString("\u0001")).apply()
+    }
+
     fun clearRecents() {
         recents = emptyList()
         store.edit().remove("recents").apply()

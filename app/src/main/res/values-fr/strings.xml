@@ -39,7 +39,7 @@
     <string name="search">Rechercher</string>
     <string name="customise">Personnaliser</string>
     <string name="done">OK</string>
-    <string name="your_apps">Vos apps</string>
+    <string name="your_apps">Les plus utilisées</string>
     <string name="settings_preview">Aperçu</string>
     <string name="settings_effects">Effets</string>
     <string name="default_banner_title">Lumen n’est pas encore votre écran d’accueil</string>
@@ -241,4 +241,9 @@
     <string name="onb_replay">Revoir la visite d\'accueil</string>
     <string name="cus_search">Rechercher un réglage</string>
     <string name="cus_no_results">Aucun réglage ne correspond à « %1$s ».</string>
+    <string name="remove_recent">Retirer %1$s des recherches récentes</string>
+    <string name="media_previous">Précédent</string>
+    <string name="media_play">Lire</string>
+    <string name="media_pause">Pause</string>
+    <string name="media_next">Suivant</string>
 </resources>

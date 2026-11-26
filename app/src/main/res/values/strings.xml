@@ -41,7 +41,7 @@
     <string name="search">Search</string>
     <string name="customise">Customise</string>
     <string name="done">Done</string>
-    <string name="your_apps">Your apps</string>
+    <string name="your_apps">Most used</string>
     <string name="settings_preview">Preview</string>
     <string name="settings_effects">Effects</string>
     <string name="default_banner_title">Lumen isn’t your home screen yet</string>
@@ -250,4 +250,9 @@
     <string name="onb_replay">Show the welcome tour</string>
     <string name="cus_search">Search settings</string>
     <string name="cus_no_results">No settings match “%1$s”.</string>
+    <string name="remove_recent">Remove %1$s from recent searches</string>
+    <string name="media_previous">Previous</string>
+    <string name="media_play">Play</string>
+    <string name="media_pause">Pause</string>
+    <string name="media_next">Next</string>
 </resources>

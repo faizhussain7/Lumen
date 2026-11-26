@@ -357,7 +357,7 @@ fun vivid(s: androidx.compose.material3.ColorScheme, amount: Float, dark: Boolea
     )
 }
 
-@OptIn(androidx.compose.ui.text.ExperimentalTextApi::class)
+@OptIn(androidx.compose.ui.text.ExperimentalTextApi::class, androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 fun flexTypography(): androidx.compose.material3.Typography {
     val base = androidx.compose.material3.Typography()
     fun androidx.compose.ui.text.TextStyle.flex(weight: Int, width: Int = 100) = copy(fontFamily = Flex.family(weight, width), fontWeight = androidx.compose.ui.text.font.FontWeight(weight))
@@ -377,5 +377,20 @@ fun flexTypography(): androidx.compose.material3.Typography {
         labelLarge = base.labelLarge.flex(620),
         labelMedium = base.labelMedium.flex(620),
         labelSmall = base.labelSmall.flex(620),
+        displayLargeEmphasized = base.displayLargeEmphasized.flex(900, 108),
+        displayMediumEmphasized = base.displayMediumEmphasized.flex(900, 108),
+        displaySmallEmphasized = base.displaySmallEmphasized.flex(900, 108),
+        headlineLargeEmphasized = base.headlineLargeEmphasized.flex(850, 104),
+        headlineMediumEmphasized = base.headlineMediumEmphasized.flex(850, 104),
+        headlineSmallEmphasized = base.headlineSmallEmphasized.flex(820, 104),
+        titleLargeEmphasized = base.titleLargeEmphasized.flex(800, 102),
+        titleMediumEmphasized = base.titleMediumEmphasized.flex(760),
+        titleSmallEmphasized = base.titleSmallEmphasized.flex(750),
+        bodyLargeEmphasized = base.bodyLargeEmphasized.flex(560),
+        bodyMediumEmphasized = base.bodyMediumEmphasized.flex(560),
+        bodySmallEmphasized = base.bodySmallEmphasized.flex(560),
+        labelLargeEmphasized = base.labelLargeEmphasized.flex(760),
+        labelMediumEmphasized = base.labelMediumEmphasized.flex(760),
+        labelSmallEmphasized = base.labelSmallEmphasized.flex(760),
     )
 }

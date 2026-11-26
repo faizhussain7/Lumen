@@ -14,10 +14,6 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -164,8 +160,14 @@ private fun CoverScreen(prefs: LumenPrefs, device: DeviceState, onUnlock: () -> 
     val scheme = MaterialTheme.colorScheme
     val scope = rememberCoroutineScope()
     val lift = remember { Animatable(0f) }
-    val hint = rememberInfiniteTransition(label = "hint")
-    val bob by hint.animateFloat(0f, 1f, infiniteRepeatable(tween(1300), RepeatMode.Reverse), label = "bob")
+    val bobAnim = remember { Animatable(0f) }
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        repeat(3) {
+            bobAnim.animateTo(1f, tween(650))
+            bobAnim.animateTo(0f, tween(650))
+        }
+    }
+    val bob = bobAnim.value
     val context = androidx.compose.ui.platform.LocalContext.current
     val now = rememberNow()
     val is24 = android.text.format.DateFormat.is24HourFormat(context)
@@ -196,30 +198,31 @@ private fun CoverScreen(prefs: LumenPrefs, device: DeviceState, onUnlock: () -> 
         Column(horizontalAlignment = align) {
             Text(
                 android.text.format.DateFormat.format("EEEE, d MMMM", now).toString(),
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold, letterSpacing = 0.3.sp),
+                style = MaterialTheme.typography.titleMediumEmphasized,
                 color = Color.White.copy(alpha = 0.92f),
             )
             Spacer(Modifier.height(12.dp))
             ClockFace(style, hours, minutes, ink, accent, 0.95f + prefs.clockScaleState.value * 0.45f, clockWeight(prefs.clockWeightState.value), clockWidth(prefs.clockWidthState.value))
-            Spacer(Modifier.height(18.dp))
+            Spacer(Modifier.height(16.dp))
             androidx.compose.foundation.layout.FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp, align),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 if (charging && level >= 0) {
+                    val charge = Color(0xFF9BE89B)
                     Column(
-                        Modifier.clip(RoundedCornerShape(22.dp)).background(Color(0xFF1E8E3E).copy(alpha = 0.92f)).padding(horizontal = 14.dp, vertical = 8.dp),
+                        Modifier.clip(RoundedCornerShape(24.dp)).background(Color.White.copy(alpha = 0.16f)).padding(horizontal = 16.dp, vertical = 8.dp),
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            GlyphIcon(Glyph.Bolt, Color.White, 18.dp)
-                            Spacer(Modifier.size(6.dp))
-                            Text(context.getString(R.string.lock_charging, level), style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold), color = Color.White)
+                            GlyphIcon(Glyph.Bolt, charge, 18.dp)
+                            Spacer(Modifier.size(8.dp))
+                            Text(context.getString(R.string.lock_charging, level), style = MaterialTheme.typography.labelLargeEmphasized.copy(fontFeatureSettings = "tnum"), color = Color.White)
                         }
                         androidx.compose.material3.LinearWavyProgressIndicator(
                             progress = { level / 100f },
-                            color = Color.White,
-                            trackColor = Color.White.copy(alpha = 0.25f),
-                            modifier = Modifier.padding(top = 6.dp).size(width = 150.dp, height = 10.dp),
+                            color = charge,
+                            trackColor = Color.White.copy(alpha = 0.22f),
+                            modifier = Modifier.padding(top = 8.dp).size(width = 152.dp, height = 12.dp),
                         )
                     }
                 } else if (level >= 0) {
@@ -228,9 +231,9 @@ private fun CoverScreen(prefs: LumenPrefs, device: DeviceState, onUnlock: () -> 
                 if (alarm != null) CoverChip({ GlyphIcon(Glyph.Alarm, Color.White, 17.dp) }, android.text.format.DateFormat.format(if (is24) "EEE HH:mm" else "EEE h:mm a", java.util.Date(alarm)).toString())
             }
             if (prefs.lockWidgetsState.value) {
-                Spacer(Modifier.height(14.dp))
+                Spacer(Modifier.height(16.dp))
                 val weather = rememberWeather(prefs.weatherState.value)
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     DateWidget(64.dp)
                     if (weather != null) WeatherWidget(64.dp, weather)
                 }
@@ -246,7 +249,7 @@ private fun CoverScreen(prefs: LumenPrefs, device: DeviceState, onUnlock: () -> 
     var showAll by remember { mutableStateOf(false) }
     val infoBlock = @Composable { modifier: Modifier ->
         Column(modifier) {
-            if (media != null) Box(Modifier.padding(bottom = 10.dp)) { NowBar(media) }
+            if (media != null) Box(Modifier.padding(bottom = 12.dp)) { NowBar(media) }
             when {
                 prefs.lockNoticesState.value == LockNotices.Hidden || notices.isEmpty() -> Unit
                 prefs.lockNoticesState.value == LockNotices.Icons && !showAll -> Row(
@@ -309,17 +312,17 @@ private fun CoverScreen(prefs: LumenPrefs, device: DeviceState, onUnlock: () -> 
                 Box(Modifier.fillMaxWidth(), contentAlignment = if (centred) Alignment.TopCenter else Alignment.TopStart) {
                     clockBlock(if (centred) Alignment.CenterHorizontally else Alignment.Start)
                 }
-                Spacer(Modifier.height(18.dp))
+                Spacer(Modifier.height(20.dp))
                 infoBlock(Modifier.weight(1f).fillMaxWidth())
             }
-            Column(Modifier.fillMaxWidth().padding(top = 14.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Column(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 androidx.compose.material3.Icon(
                     Icons.Rounded.KeyboardArrowUp,
                     contentDescription = null,
                     tint = Color.White.copy(alpha = 0.5f + bob * 0.4f),
-                    modifier = Modifier.size(28.dp).graphicsLayer { translationY = -bob * 8.dp.toPx() },
+                    modifier = Modifier.size(28.dp).graphicsLayer { translationY = -bob * 6.dp.toPx() },
                 )
-                Text(stringResource(R.string.lock_unlock), style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold), color = Color.White.copy(alpha = 0.85f))
+                Text(stringResource(R.string.lock_unlock), style = MaterialTheme.typography.labelLarge, color = Color.White.copy(alpha = 0.85f))
             }
             Row(
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -369,7 +372,7 @@ private fun NowBar(media: NowPlaying) {
     val scheme = MaterialTheme.colorScheme
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth().clip(CircleShape).background(scheme.primaryContainer.copy(alpha = 0.9f)).padding(6.dp),
+        modifier = Modifier.fillMaxWidth().clip(CircleShape).background(scheme.primaryContainer.copy(alpha = 0.9f)).padding(8.dp),
     ) {
         Box(Modifier.size(52.dp).clip(PolygonShape(LumenShapes.clockBadge)).background(scheme.primary), contentAlignment = Alignment.Center) {
             if (media.art != null) androidx.compose.foundation.Image(media.art, contentDescription = null, contentScale = androidx.compose.ui.layout.ContentScale.Crop, modifier = Modifier.size(52.dp))
@@ -377,24 +380,23 @@ private fun NowBar(media: NowPlaying) {
         }
         Spacer(Modifier.size(12.dp))
         Column(Modifier.weight(1f)) {
-            Text(media.title, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold), color = scheme.onPrimaryContainer, maxLines = 1)
+            Text(media.title, style = MaterialTheme.typography.titleSmallEmphasized, color = scheme.onPrimaryContainer, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
             Text(media.artist.ifBlank { media.app }, style = MaterialTheme.typography.bodySmall, color = scheme.onPrimaryContainer.copy(alpha = 0.75f), maxLines = 1)
         }
-        MediaButton(Icons.Rounded.SkipPrevious) { media.controller.transportControls.skipToPrevious() }
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier.size(width = 60.dp, height = 48.dp).tap(CircleShape, depth = 0.1f) {
-                if (media.playing) media.controller.transportControls.pause() else media.controller.transportControls.play()
-            }.background(scheme.primary),
-        ) { androidx.compose.material3.Icon(if (media.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, contentDescription = null, tint = scheme.onPrimary) }
-        MediaButton(Icons.Rounded.SkipNext) { media.controller.transportControls.skipToNext() }
+        MediaButton(Icons.Rounded.SkipPrevious, stringResource(R.string.media_previous)) { media.controller.transportControls.skipToPrevious() }
+        androidx.compose.material3.FilledIconButton(
+            onClick = { if (media.playing) media.controller.transportControls.pause() else media.controller.transportControls.play() },
+            shapes = androidx.compose.material3.IconButtonDefaults.shapes(),
+            modifier = Modifier.size(width = 56.dp, height = 48.dp),
+        ) { androidx.compose.material3.Icon(if (media.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, contentDescription = stringResource(if (media.playing) R.string.media_pause else R.string.media_play)) }
+        MediaButton(Icons.Rounded.SkipNext, stringResource(R.string.media_next)) { media.controller.transportControls.skipToNext() }
     }
 }
 
 @Composable
-private fun MediaButton(icon: androidx.compose.ui.graphics.vector.ImageVector, onClick: () -> Unit) {
-    Box(contentAlignment = Alignment.Center, modifier = Modifier.size(44.dp).tap(CircleShape, depth = 0.12f, onClick = onClick)) {
-        androidx.compose.material3.Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
+private fun MediaButton(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, onClick: () -> Unit) {
+    androidx.compose.material3.IconButton(onClick = onClick, shapes = androidx.compose.material3.IconButtonDefaults.shapes()) {
+        androidx.compose.material3.Icon(icon, contentDescription = label, tint = MaterialTheme.colorScheme.onPrimaryContainer)
     }
 }
 
@@ -402,11 +404,11 @@ private fun MediaButton(icon: androidx.compose.ui.graphics.vector.ImageVector, o
 private fun CoverChip(icon: @Composable () -> Unit, text: String) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.clip(CircleShape).background(Color.White.copy(alpha = 0.16f)).padding(horizontal = 14.dp, vertical = 8.dp),
+        modifier = Modifier.clip(CircleShape).background(Color.White.copy(alpha = 0.16f)).padding(horizontal = 16.dp, vertical = 8.dp),
     ) {
         icon()
         Spacer(Modifier.size(8.dp))
-        Text(text, style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold), color = Color.White)
+        Text(text, style = MaterialTheme.typography.labelLargeEmphasized.copy(fontFeatureSettings = "tnum"), color = Color.White)
     }
 }
 

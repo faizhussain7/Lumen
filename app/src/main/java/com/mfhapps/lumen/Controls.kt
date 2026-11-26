@@ -288,7 +288,7 @@ fun ControlCentre(state: DeviceState, progress: () -> Float, onClose: () -> Unit
     val openGroups = remember { mutableStateOf(setOf<String>()) }
     val tap: (Tile) -> Unit = { haptics.performHapticFeedback(HapticFeedbackType.ContextClick); it.onClick() }
     val controls: @Composable () -> Unit = {
-        Column(Modifier.padding(start = 18.dp, end = 18.dp, top = 14.dp)) {
+        Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
                 Column(Modifier.weight(1f)) {
                     Text(DateFormat.format(if (DateFormat.is24HourFormat(context)) "HH:mm" else "h:mm", now).toString(), style = flexStyle(44f, 950, 100, scheme.onSurface))
@@ -296,18 +296,18 @@ fun ControlCentre(state: DeviceState, progress: () -> Float, onClose: () -> Unit
                 }
                 if (level >= 0) BatteryWave(level, charging, scheme.onSurface, 50.dp, showPercent = true, percentInside = true)
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
                 pills.forEach { tile -> TileView(tile, Modifier.weight(1f)) { tap(tile) } }
             }
             androidx.compose.foundation.lazy.grid.LazyHorizontalGrid(
                 rows = androidx.compose.foundation.lazy.grid.GridCells.Fixed(2),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth().height(186.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxWidth().height(212.dp),
             ) {
-                items(tiles.size) { i -> RoundToggle(tiles[i], i, Modifier.width(72.dp)) { tap(tiles[i]) } }
+                items(tiles.size) { i -> RoundToggle(tiles[i], Modifier.width(72.dp)) { tap(tiles[i]) } }
             }
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 8.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 12.dp)) {
                 ExpressiveSlider(Glyph.Sun, stringResource(R.string.cc_brightness), state.brightness) { value -> if (!state.changeBrightness(value)) state.askWrite() }
                 ExpressiveSlider(Glyph.Volume, stringResource(R.string.cc_volume), state.volume) { state.changeVolume(it) }
             }
@@ -315,14 +315,14 @@ fun ControlCentre(state: DeviceState, progress: () -> Float, onClose: () -> Unit
     }
     val noticeList: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
         item(key = "notice-head") {
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(top = 18.dp, bottom = 10.dp, start = 4.dp)) {
-                Text(stringResource(R.string.cc_notifications), style = flexStyle(24f, 900, 100, scheme.onSurface), modifier = Modifier.weight(1f))
-                if (notices.any { it.clearable }) FabPill(stringResource(R.string.clear_all), null) { LumenNotifications.clearAll() }
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(top = 20.dp, bottom = 8.dp, start = 4.dp)) {
+                Text(stringResource(R.string.cc_notifications), style = MaterialTheme.typography.titleLargeEmphasized, color = scheme.onSurface, modifier = Modifier.weight(1f))
+                if (notices.any { it.clearable }) androidx.compose.material3.FilledTonalButton(onClick = { LumenNotifications.clearAll() }, shapes = androidx.compose.material3.ButtonDefaults.shapes()) { Text(stringResource(R.string.clear_all)) }
             }
         }
         when {
-            !Badges.granted(context) -> item(key = "grant") { FabPill(stringResource(R.string.opt_grant), Glyph.Bell, emphasis = true) { onClose(); Badges.requestAccess(context) } }
-            notices.isEmpty() -> item(key = "empty") { Text(stringResource(R.string.no_notifications), style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant, modifier = Modifier.padding(4.dp)) }
+            !Badges.granted(context) -> item(key = "grant") { androidx.compose.material3.Button(onClick = { onClose(); Badges.requestAccess(context) }, shapes = androidx.compose.material3.ButtonDefaults.shapes()) { GlyphIcon(Glyph.Bell, scheme.onPrimary, 18.dp); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.opt_grant)) } }
+            notices.isEmpty() -> item(key = "empty") { Text(stringResource(R.string.no_notifications), style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp)) }
             else -> noticeGroups(groups, openGroups) { intent -> onClose(); sendNotice(context, intent) }
         }
     }
@@ -361,7 +361,7 @@ fun ControlCentre(state: DeviceState, progress: () -> Float, onClose: () -> Unit
                 .windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.displayCutout.only(androidx.compose.foundation.layout.WindowInsetsSides.Horizontal))
                 .heightIn(max = configuration.screenHeightDp.dp - 90.dp),
         ) {
-            val pad = androidx.compose.foundation.layout.PaddingValues(start = 18.dp, end = 18.dp, bottom = 18.dp)
+            val pad = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp)
             if (wide) {
                 Row {
                     Box(Modifier.weight(1f).verticalScroll(androidx.compose.foundation.rememberScrollState())) { controls() }
@@ -379,24 +379,23 @@ fun ControlCentre(state: DeviceState, progress: () -> Float, onClose: () -> Unit
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun RoundToggle(tile: Tile, index: Int, modifier: Modifier, onClick: () -> Unit) {
+private fun RoundToggle(tile: Tile, modifier: Modifier, onClick: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
     val springs = LocalSprings.current
     val morph by androidx.compose.animation.core.animateFloatAsState(if (tile.active) 1f else 0f, springs.spec(), label = "toggle")
     val shape = remember { androidx.graphics.shapes.Morph(androidx.compose.material3.MaterialShapes.Square, LumenShapes.clockBadge) }
-    val tones = listOf(scheme.primary to scheme.onPrimary, scheme.tertiary to scheme.onTertiary, scheme.secondary to scheme.onSecondary)
-    val (fill, ink) = tones[index % tones.size]
+    val fill = scheme.primary
+    val ink = scheme.onPrimary
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = modifier) {
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(1f)
+                .size(64.dp)
                 .tap(MorphShape(shape, morph, morph * 22f), label = tile.title, depth = 0.1f, onClick = onClick)
                 .background(androidx.compose.ui.graphics.lerp(scheme.surfaceContainerHighest, fill, morph)),
-        ) { GlyphIcon(tile.glyph, androidx.compose.ui.graphics.lerp(scheme.onSurface, ink, morph), 28.dp) }
-        Spacer(Modifier.height(6.dp))
-        Text(tile.title, style = MaterialTheme.typography.labelSmall.copy(lineHeight = 13.sp), color = scheme.onSurfaceVariant, maxLines = 2, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+        ) { GlyphIcon(tile.glyph, androidx.compose.ui.graphics.lerp(scheme.onSurface, ink, morph), 24.dp) }
+        Spacer(Modifier.height(8.dp))
+        Text(tile.title, style = MaterialTheme.typography.labelSmall.copy(lineHeight = 14.sp), color = scheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
     }
 }
 
@@ -412,10 +411,10 @@ private fun TileView(tile: Tile, modifier: Modifier, onClick: () -> Unit) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
-            .height(76.dp)
+            .height(72.dp)
             .tap(RoundedCornerShape(corner), depth = 0.04f, onClick = onClick)
             .background(fill)
-            .padding(horizontal = 14.dp),
+            .padding(horizontal = 16.dp),
     ) {
         Box(
             contentAlignment = Alignment.Center,
@@ -423,7 +422,7 @@ private fun TileView(tile: Tile, modifier: Modifier, onClick: () -> Unit) {
         ) { GlyphIcon(tile.glyph, ink) }
         Spacer(Modifier.width(12.dp))
         Column {
-            Text(tile.title, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold), color = ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(tile.title, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold), color = ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
             if (tile.status.isNotEmpty()) Text(tile.status, style = MaterialTheme.typography.bodySmall, color = ink.copy(alpha = 0.75f), maxLines = 1)
         }
     }

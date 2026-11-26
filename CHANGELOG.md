@@ -22,6 +22,8 @@ All notable changes to Lumen are recorded here. The format follows
 - Unit tests for search ranking, the calculator, unit conversion and the settings index.
 
 ### Changed
+- **App drawer, search, control panel and lock screen polished**: spacing on a 4 dp grid, sentence-case section labels, Roboto Flex versions of the M3 Expressive emphasized type styles, shape-morphing M3 Expressive buttons for secondary actions, one accent for active quick tiles, quiet counts and a calmer unlock hint.
+- **Recent searches** are a list with a remove button on each entry; picking one puts the cursor at the end and moves it to the top, and searches started from the keyboard are saved too.
 - **Customise is now compact**: each section is a header with a one-line summary that expands smoothly when tapped, and switch rows react to a press anywhere on the row.
 - Accent colours are now built from tone targets with a contrast check, so text and icons stay readable on every accent, blue included.
 - The home screen menu opens reliably on long-press, with a clear remove button; folders on the home screen can be removed from their sheet.

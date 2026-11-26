@@ -150,23 +150,24 @@ fun SearchResults(
     var index = 0
     LazyColumn(
         modifier = modifier,
-        contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 10.dp, bottom = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         val top = apps.firstOrNull()
         if (top != null) {
             item(key = "top") {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.stagger(index++).fillMaxWidth().clip(RoundedCornerShape(30.dp)).background(scheme.primaryContainer).padding(14.dp),
+                    modifier = Modifier.stagger(index++).fillMaxWidth().clip(RoundedCornerShape(28.dp)).background(scheme.primaryContainer).padding(16.dp),
                 ) {
                     AppIcon(top, catalog, prefs, 56.dp, showLabel = false, labelColor = scheme.onPrimaryContainer, onLaunch = { saveRecent(); onLaunch(top, it) }, onMenu = { onMenu(top, it) })
-                    Spacer(Modifier.width(14.dp))
+                    Spacer(Modifier.width(16.dp))
                     Column(Modifier.weight(1f)) {
                         Text(stringResource(R.string.search_top), style = MaterialTheme.typography.labelMedium, color = scheme.onPrimaryContainer.copy(alpha = 0.75f))
-                        Text(top.label, style = flexStyle(24f, 850, 100, scheme.onPrimaryContainer), maxLines = 1)
+                        Text(top.label, style = flexStyle(24f, 800, 100, scheme.onPrimaryContainer), maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                     }
-                    FabPill(stringResource(R.string.notice_open), null, emphasis = true) { saveRecent(); onLaunch(top, null) }
+                    Spacer(Modifier.width(12.dp))
+                    androidx.compose.material3.Button(onClick = { saveRecent(); onLaunch(top, null) }, shapes = androidx.compose.material3.ButtonDefaults.shapes()) { Text(stringResource(R.string.notice_open)) }
                 }
             }
         }
@@ -188,9 +189,9 @@ fun SearchResults(
         if (apps.size > 1) {
             item(key = "apps-label") { SectionLabel(stringResource(R.string.search_section_apps)) }
             item(key = "apps") {
-                Column(Modifier.stagger(index++).fillMaxWidth().clip(RoundedCornerShape(28.dp)).background(scheme.surfaceContainerHigh.copy(alpha = 0.7f)).padding(vertical = 14.dp)) {
+                Column(Modifier.stagger(index++).fillMaxWidth().clip(RoundedCornerShape(28.dp)).background(scheme.surfaceContainerHigh.copy(alpha = 0.7f)).padding(vertical = 16.dp)) {
                     apps.drop(1).take(prefs.columns.coerceAtLeast(4) * 2).chunked(prefs.columns.coerceAtLeast(4)).forEach { row ->
-                        Row(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
+                        Row(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
                             row.forEach { app ->
                                 Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
                                     AppIcon(app, catalog, prefs, iconSize, showLabel = true, labelColor = scheme.onSurface, onLaunch = { saveRecent(); onLaunch(app, it) }, onMenu = { onMenu(app, it) })
@@ -228,11 +229,11 @@ fun SearchResults(
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().listTap {
                             saveRecent()
                             runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, ContentUris.withAppendedId(ContactsContract.Contacts.CONTENT_URI, c.id)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
-                        }.background(scheme.surfaceContainerHigh.copy(alpha = 0.85f)).padding(horizontal = 16.dp, vertical = 10.dp)) {
+                        }.background(scheme.surfaceContainerHigh.copy(alpha = 0.85f)).padding(horizontal = 16.dp, vertical = 12.dp)) {
                             Box(Modifier.size(40.dp).clip(PolygonShape(LumenShapes.clockBadge)).background(scheme.tertiaryContainer), contentAlignment = Alignment.Center) {
                                 Text(c.name.take(1).uppercase(), style = MaterialTheme.typography.titleMedium, color = scheme.onTertiaryContainer)
                             }
-                            Spacer(Modifier.width(14.dp))
+                            Spacer(Modifier.width(16.dp))
                             Text(c.name, style = MaterialTheme.typography.bodyLarge, color = scheme.onSurface, maxLines = 1, modifier = Modifier.weight(1f))
                             if (c.phone != null) {
                                 IconBubble(Glyph.Data) { runCatching { context.startActivity(Intent(Intent.ACTION_SENDTO, android.net.Uri.parse("smsto:" + c.phone)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } }
@@ -282,10 +283,10 @@ private fun IconBubble(glyph: Glyph, onClick: () -> Unit) {
 @Composable
 private fun SectionLabel(text: String) {
     Text(
-        text.uppercase(),
-        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp),
+        text,
+        style = MaterialTheme.typography.titleSmallEmphasized,
         color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(start = 10.dp, top = 6.dp),
+        modifier = Modifier.padding(start = 16.dp, top = 8.dp),
     )
 }
 
@@ -301,7 +302,7 @@ private fun ResultRow(title: String, initial: String?, glyph: Glyph?, search: Bo
                 glyph != null -> GlyphIcon(glyph, scheme.onSurface, 20.dp)
             }
         }
-        Spacer(Modifier.width(14.dp))
+        Spacer(Modifier.width(16.dp))
         Text(title, style = MaterialTheme.typography.bodyLarge, color = scheme.onSurface, maxLines = 1, modifier = Modifier.weight(1f))
     }
 }

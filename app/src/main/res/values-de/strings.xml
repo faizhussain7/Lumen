@@ -39,7 +39,7 @@
     <string name="search">Suchen</string>
     <string name="customise">Anpassen</string>
     <string name="done">Fertig</string>
-    <string name="your_apps">Deine Apps</string>
+    <string name="your_apps">Meistgenutzt</string>
     <string name="settings_preview">Vorschau</string>
     <string name="settings_effects">Effekte</string>
     <string name="default_banner_title">Lumen ist noch nicht dein Startbildschirm</string>
@@ -241,4 +241,9 @@
     <string name="onb_replay">Willkommenstour erneut zeigen</string>
     <string name="cus_search">Einstellungen durchsuchen</string>
     <string name="cus_no_results">Keine Einstellung passt zu „%1$s“.</string>
+    <string name="remove_recent">%1$s aus den letzten Suchen entfernen</string>
+    <string name="media_previous">Zurück</string>
+    <string name="media_play">Abspielen</string>
+    <string name="media_pause">Pausieren</string>
+    <string name="media_next">Weiter</string>
 </resources>

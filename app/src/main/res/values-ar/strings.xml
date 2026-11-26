@@ -39,7 +39,7 @@
     <string name="search">بحث</string>
     <string name="customise">تخصيص</string>
     <string name="done">تم</string>
-    <string name="your_apps">تطبيقاتك</string>
+    <string name="your_apps">الأكثر استخدامًا</string>
     <string name="settings_preview">معاينة</string>
     <string name="settings_effects">التأثيرات</string>
     <string name="default_banner_title">Lumen ليس شاشتك الرئيسية بعد</string>
@@ -241,4 +241,9 @@
     <string name="onb_replay">عرض جولة الترحيب</string>
     <string name="cus_search">البحث في الإعدادات</string>
     <string name="cus_no_results">لا توجد إعدادات تطابق «%1$s».</string>
+    <string name="remove_recent">إزالة %1$s من عمليات البحث الأخيرة</string>
+    <string name="media_previous">السابق</string>
+    <string name="media_play">تشغيل</string>
+    <string name="media_pause">إيقاف مؤقت</string>
+    <string name="media_next">التالي</string>
 </resources>

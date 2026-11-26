@@ -67,14 +67,14 @@ fun groupNotices(list: List<Notice>): List<NoticeGroup> =
 fun LazyListScope.noticeGroups(groups: List<NoticeGroup>, openGroups: MutableState<Set<String>>, onOpen: (PendingIntent) -> Unit) {
     groups.forEach { group ->
         if (group.items.size == 1) {
-            item(key = group.items.first().key) { SwipeNotice(group.items.first(), onOpen, Modifier.padding(vertical = 1.5.dp).stagger(groups.indexOf(group))) }
+            item(key = group.items.first().key) { SwipeNotice(group.items.first(), onOpen, Modifier.padding(vertical = 2.dp).stagger(groups.indexOf(group))) }
         } else {
             val open = group.pkg in openGroups.value
             item(key = "group:" + group.pkg) {
                 Box(Modifier.stagger(groups.indexOf(group))) { GroupHeader(group, open) { openGroups.value = if (open) openGroups.value - group.pkg else openGroups.value + group.pkg } }
             }
             if (open) group.items.forEachIndexed { i, notice ->
-                item(key = notice.key) { SwipeNotice(notice, onOpen, Modifier.padding(start = 18.dp, top = 1.5.dp, bottom = 1.5.dp).stagger(i)) }
+                item(key = notice.key) { SwipeNotice(notice, onOpen, Modifier.padding(start = 16.dp, top = 2.dp, bottom = 2.dp).stagger(i)) }
             }
         }
     }
@@ -85,16 +85,16 @@ private fun GroupHeader(group: NoticeGroup, open: Boolean, onToggle: () -> Unit)
     val scheme = MaterialTheme.colorScheme
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.padding(vertical = 1.5.dp).fillMaxWidth().listTap(rest = 10.dp, onClick = onToggle).background(scheme.surfaceContainerHigh.copy(alpha = 0.92f)).padding(12.dp),
+        modifier = Modifier.padding(vertical = 2.dp).fillMaxWidth().listTap(rest = 16.dp, onClick = onToggle).background(scheme.surfaceContainerHigh.copy(alpha = 0.92f)).padding(12.dp),
     ) {
         AppBadge(group.pkg, 36.dp)
         Spacer(Modifier.size(12.dp))
         Column(Modifier.weight(1f)) {
-            Text(group.app, style = MaterialTheme.typography.titleSmall, color = scheme.onSurface, maxLines = 1)
+            Text(group.app, style = MaterialTheme.typography.titleSmallEmphasized, color = scheme.onSurface, maxLines = 1)
             if (!open) Text(group.items.first().title + if (group.items.first().text.isNotBlank()) ": " + group.items.first().text else "", style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant, maxLines = 1)
         }
-        Text("${group.items.size}", style = flexStyle(13f, 800, 100, scheme.onPrimary), modifier = Modifier.clip(CircleShape).background(scheme.primary).padding(horizontal = 9.dp, vertical = 3.dp))
-        androidx.compose.material3.Icon(if (open) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore, contentDescription = null, tint = scheme.onSurfaceVariant, modifier = Modifier.padding(start = 6.dp))
+        Text("${group.items.size}", style = MaterialTheme.typography.labelLarge.copy(fontFeatureSettings = "tnum"), color = scheme.onSurfaceVariant)
+        androidx.compose.material3.Icon(if (open) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore, contentDescription = null, tint = scheme.onSurfaceVariant, modifier = Modifier.padding(start = 8.dp))
     }
 }
 
@@ -116,7 +116,7 @@ fun SwipeNotice(notice: Notice, onOpen: (PendingIntent) -> Unit, modifier: Modif
                 .offset { IntOffset(offset.value.roundToInt(), 0) }
                 .graphicsLayer { alpha = 1f - (abs(offset.value) / (size.width.coerceAtLeast(1f))).coerceIn(0f, 0.8f) }
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(10.dp))
+                .clip(RoundedCornerShape(16.dp))
                 .background(scheme.surfaceContainerHigh.copy(alpha = 0.92f))
                 .pointerInput(notice.key) {
                     if (!notice.clearable) return@pointerInput
@@ -151,21 +151,19 @@ fun SwipeNotice(notice: Notice, onOpen: (PendingIntent) -> Unit, modifier: Modif
             }
             if (open) {
                 if (notice.text.isNotBlank()) Text(notice.text, style = MaterialTheme.typography.bodyMedium, color = scheme.onSurface, maxLines = 12, modifier = Modifier.padding(start = 48.dp, top = 8.dp))
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(start = 48.dp, top = 10.dp)) {
-                    notice.intent?.let { intent -> FabPill(stringResource(R.string.notice_open), Glyph.Home, emphasis = true) { onOpen(intent) } }
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp), itemVerticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 48.dp, top = 12.dp)) {
+                    notice.intent?.let { intent -> androidx.compose.material3.Button(onClick = { onOpen(intent) }, shapes = androidx.compose.material3.ButtonDefaults.shapes()) { Text(stringResource(R.string.notice_open)) } }
                     notice.actions.forEach { action ->
-                        FabPill(action.title, if (action.input != null) Glyph.Data else null) {
-                            if (action.input != null) replyTo = action else runCatching { action.intent.send() }
-                        }
+                        androidx.compose.material3.FilledTonalButton(onClick = { if (action.input != null) replyTo = action else runCatching { action.intent.send() } }, shapes = androidx.compose.material3.ButtonDefaults.shapes()) { Text(action.title.toString(), maxLines = 1) }
                     }
-                    FabPill(stringResource(R.string.notice_snooze), Glyph.Alarm) { LumenNotifications.snooze(notice.key, 60 * 60_000L) }
-                    if (notice.clearable) FabPill(stringResource(R.string.notice_dismiss), Glyph.Delete) { LumenNotifications.dismiss(notice.key) }
-                    FabPill(stringResource(R.string.notice_settings), Glyph.Gear) { openNoticeSettings(context, notice.pkg) }
+                    NoticeIcon(Glyph.Alarm, stringResource(R.string.notice_snooze)) { LumenNotifications.snooze(notice.key, 60 * 60_000L) }
+                    if (notice.clearable) NoticeIcon(Glyph.Delete, stringResource(R.string.notice_dismiss)) { LumenNotifications.dismiss(notice.key) }
+                    NoticeIcon(Glyph.Gear, stringResource(R.string.notice_settings)) { openNoticeSettings(context, notice.pkg) }
                 }
                 replyTo?.let { action ->
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(start = 48.dp, top = 10.dp).fillMaxWidth().height(52.dp).clip(CircleShape).background(scheme.surfaceContainerHighest).padding(start = 18.dp, end = 6.dp),
+                        modifier = Modifier.padding(start = 48.dp, top = 12.dp).fillMaxWidth().height(52.dp).clip(CircleShape).background(scheme.surfaceContainerHighest).padding(start = 16.dp, end = 6.dp),
                     ) {
                         Box(Modifier.weight(1f)) {
                             if (reply.isEmpty()) Text(action.title, style = MaterialTheme.typography.bodyLarge, color = scheme.onSurfaceVariant)
@@ -185,6 +183,14 @@ fun SwipeNotice(notice: Notice, onOpen: (PendingIntent) -> Unit, modifier: Modif
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun NoticeIcon(glyph: Glyph, label: String, onClick: () -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    androidx.compose.material3.FilledTonalIconButton(onClick = onClick, shapes = androidx.compose.material3.IconButtonDefaults.shapes()) {
+        androidx.compose.material3.Icon(glyph.vector(), contentDescription = label, modifier = Modifier.size(20.dp))
     }
 }
 

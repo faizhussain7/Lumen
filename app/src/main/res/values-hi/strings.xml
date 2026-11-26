@@ -39,7 +39,7 @@
     <string name="search">खोजें</string>
     <string name="customise">कस्टमाइज़ करें</string>
     <string name="done">हो गया</string>
-    <string name="your_apps">आपके ऐप्स</string>
+    <string name="your_apps">सबसे ज़्यादा इस्तेमाल</string>
     <string name="settings_preview">झलक</string>
     <string name="settings_effects">इफ़ेक्ट</string>
     <string name="default_banner_title">Lumen अभी आपकी होम स्क्रीन नहीं है</string>
@@ -241,4 +241,9 @@
     <string name="onb_replay">स्वागत टूर फिर दिखाएं</string>
     <string name="cus_search">सेटिंग खोजें</string>
     <string name="cus_no_results">“%1$s” से कोई सेटिंग मेल नहीं खाती।</string>
+    <string name="remove_recent">%1$s को हाल की खोजों से हटाएं</string>
+    <string name="media_previous">पिछला</string>
+    <string name="media_play">चलाएं</string>
+    <string name="media_pause">रोकें</string>
+    <string name="media_next">अगला</string>
 </resources>

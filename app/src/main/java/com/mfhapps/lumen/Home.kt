@@ -21,7 +21,10 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.History
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.only
@@ -700,6 +703,9 @@ private fun DrawerSheet(
     LaunchedEffect(Unit) {
         snapshotFlow { progress() < 0.6f }.collect { closing -> if (closing) { focusManager.clearFocus(); keyboard?.hide() } }
     }
+    var field by remember { mutableStateOf(androidx.compose.ui.text.input.TextFieldValue(query)) }
+    LaunchedEffect(query) { if (query != field.text) field = androidx.compose.ui.text.input.TextFieldValue(query, androidx.compose.ui.text.TextRange(query.length)) }
+    val pickRecent = { text: String -> prefs.addRecent(text); onQuery(text) }
     val slop = LocalViewConfiguration.current.touchSlop
     LaunchedEffect(Unit) { snapshotFlow { progress() in 0.02f..0.5f }.collect { early -> if (early) grid.scrollToItem(0) } }
     val sheetShape = RoundedCornerShape(topStart = 36.dp, topEnd = 36.dp)
@@ -743,7 +749,7 @@ private fun DrawerSheet(
                 }
             }
             .background(scheme.surfaceContainer.copy(alpha = 0.97f))
-            .border(1.dp, Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.18f), Color.Transparent)), sheetShape),
+            .border(1.dp, scheme.onSurface.copy(alpha = 0.08f), sheetShape),
     ) {
         Column(Modifier.fillMaxSize().imePadding().navigationBarsPadding().windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.displayCutout.only(androidx.compose.foundation.layout.WindowInsetsSides.Horizontal))) {
             Box(
@@ -761,9 +767,9 @@ private fun DrawerSheet(
                 Box(Modifier.size(width = 40.dp, height = 5.dp).clip(CircleShape).background(scheme.onSurfaceVariant.copy(alpha = 0.5f)))
             }
             if (query.isBlank()) {
-                Row(verticalAlignment = Alignment.Bottom, modifier = Modifier.fillMaxWidth().padding(start = 22.dp, end = 22.dp, bottom = 12.dp)) {
+                Row(verticalAlignment = Alignment.Bottom, modifier = Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, bottom = 12.dp)) {
                     DisplayTitle(stringResource(R.string.apps_title), size = 38f, modifier = Modifier.weight(1f))
-                    Text("${all.size}", style = flexStyle(18f, 700, 100, scheme.onSurfaceVariant), modifier = Modifier.padding(bottom = 6.dp))
+                    Text("${all.size}", style = flexStyle(16f, 500, 100, scheme.onSurfaceVariant).copy(fontFeatureSettings = "tnum"), modifier = Modifier.padding(bottom = 8.dp))
                 }
             }
             if (query.isBlank() && prefs.categoriesState.value) {
@@ -779,31 +785,22 @@ private fun DrawerSheet(
                 if (all.isEmpty()) {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { androidx.compose.material3.LoadingIndicator() }
                 } else if (query.isBlank() && focused && prefs.recents.isNotEmpty()) {
-                    Column(Modifier.fillMaxSize().padding(horizontal = 18.dp, vertical = 12.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(stringResource(R.string.search_recent), style = flexStyle(22f, 850, 100, scheme.onSurface), modifier = Modifier.weight(1f))
-                            FabPill(stringResource(R.string.clear_all), null) { prefs.clearRecents() }
-                        }
-                        Spacer(Modifier.height(10.dp))
-                        androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            prefs.recents.forEachIndexed { i, r -> Box(Modifier.stagger(i)) { FabPill(r, Glyph.Search) { onQuery(r) } } }
-                        }
-                    }
+                    RecentSearches(prefs.recents, onPick = pickRecent, onRemove = { prefs.removeRecent(it) }, onClear = { prefs.clearRecents() })
                 } else if (query.isNotBlank()) {
                     SearchResults(query, shown, catalog, prefs, iconSize, onLaunch, onMenu, Modifier.fillMaxSize())
                 } else
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(columns),
                     state = grid,
-                    contentPadding = PaddingValues(start = 10.dp, end = 30.dp, top = 14.dp, bottom = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(18.dp),
+                    contentPadding = PaddingValues(start = 12.dp, end = 32.dp, top = 16.dp, bottom = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(20.dp),
                     modifier = Modifier.fillMaxSize(),
                 ) {
                     if (headerItems > 0) {
                         item(span = { GridItemSpan(maxLineSpan) }, key = "fav-title") {
                             Text(
                                 stringResource(R.string.your_apps),
-                                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold, letterSpacing = 0.6.sp),
+                                style = MaterialTheme.typography.titleSmallEmphasized,
                                 color = scheme.primary,
                                 modifier = Modifier.padding(start = 8.dp),
                             )
@@ -841,7 +838,8 @@ private fun DrawerSheet(
                         }
                     }
                 }
-                if (browsing && shown.size > 20) {
+                val showingRecents = query.isBlank() && focused && prefs.recents.isNotEmpty()
+                if (browsing && !showingRecents && shown.size > 20) {
                     LetterRail(
                         letters = remember(shown) { shown.map { it.label.firstOrNull()?.uppercaseChar()?.let { c -> if (c.isLetter()) c else '#' } ?: '#' }.distinct() },
                         modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight().padding(vertical = 12.dp),
@@ -857,31 +855,64 @@ private fun DrawerSheet(
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
-                    .padding(start = 14.dp, end = 14.dp, top = 6.dp, bottom = 12.dp)
+                    .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 12.dp)
                     .fillMaxWidth()
-                    .height(54.dp)
-                    .clip(CircleShape)
+                    .height(56.dp)
+                    .tap(CircleShape, depth = 0.02f) { focusRequester.requestFocus(); keyboard?.show() }
                     .background(scheme.surfaceContainerHighest)
-                    .clickable { focusRequester.requestFocus(); keyboard?.show() }
                     .padding(horizontal = 20.dp),
             ) {
                 SearchGlyph(scheme.onSurfaceVariant)
-                Spacer(Modifier.width(14.dp))
+                Spacer(Modifier.width(12.dp))
                 Box(Modifier.weight(1f)) {
                     if (query.isEmpty()) Text(stringResource(R.string.search_apps), style = MaterialTheme.typography.bodyLarge, color = scheme.onSurfaceVariant)
                     BasicTextField(
-                        value = query,
-                        onValueChange = onQuery,
+                        value = field,
+                        onValueChange = { field = it; if (it.text != query) onQuery(it.text) },
                         singleLine = true,
                         textStyle = MaterialTheme.typography.bodyLarge.copy(color = scheme.onSurface),
                         cursorBrush = SolidColor(scheme.primary),
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
                         keyboardActions = KeyboardActions(onGo = {
+                            prefs.addRecent(query.trim())
                             val first = shown.firstOrNull()
                             if (first != null) onLaunch(first, null) else webSearch(context, query)
                         }),
                         modifier = Modifier.fillMaxWidth().focusRequester(focusRequester).onFocusChanged { focused = it.isFocused },
                     )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RecentSearches(recents: List<String>, onPick: (String) -> Unit, onRemove: (String) -> Unit, onClear: () -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    Column(Modifier.fillMaxSize().verticalScroll(androidx.compose.foundation.rememberScrollState()).padding(horizontal = 16.dp, vertical = 12.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(start = 8.dp, bottom = 8.dp)) {
+            Text(stringResource(R.string.search_recent), style = MaterialTheme.typography.titleMediumEmphasized, color = scheme.onSurface, modifier = Modifier.weight(1f))
+            androidx.compose.material3.FilledTonalButton(onClick = onClear, shapes = androidx.compose.material3.ButtonDefaults.shapes()) { Text(stringResource(R.string.clear_all)) }
+        }
+        Column(Modifier.fillMaxWidth().animateContentSize(LocalSprings.current.size()).clip(RoundedCornerShape(24.dp)), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            recents.forEach { text ->
+                androidx.compose.runtime.key(text) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp)
+                            .listTap(rest = 8.dp) { onPick(text) }
+                            .background(scheme.surfaceContainerHigh)
+                            .padding(start = 16.dp, end = 4.dp),
+                    ) {
+                        androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Rounded.History, contentDescription = null, tint = scheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(12.dp))
+                        Text(text, style = MaterialTheme.typography.bodyLarge, color = scheme.onSurface, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                        androidx.compose.material3.IconButton(onClick = { onRemove(text) }, shapes = androidx.compose.material3.IconButtonDefaults.shapes()) {
+                            androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Rounded.Close, contentDescription = stringResource(R.string.remove_recent, text), tint = scheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+                        }
+                    }
                 }
             }
         }
