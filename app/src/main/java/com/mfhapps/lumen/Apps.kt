@@ -24,6 +24,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.graphics.shapes.toPath
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -93,12 +95,16 @@ class AppCatalog(private val context: Context, private val scope: CoroutineScope
         }
     }
 
-    fun cachedIcon(app: AppEntry, sizePx: Int, themed: Boolean): ImageBitmap? = icons.get(iconKey(app, sizePx, themed))
+    fun cachedIcon(app: AppEntry, sizePx: Int, themed: Boolean, pack: String = "", shape: IconShape? = null): ImageBitmap? = icons.get(iconKey(app, sizePx, themed, pack) + ":" + shape)
 
-    suspend fun icon(app: AppEntry, sizePx: Int, themed: Boolean, tint: Int, ground: Int): ImageBitmap {
-        val key = iconKey(app, sizePx, themed)
+    suspend fun icon(app: AppEntry, sizePx: Int, themed: Boolean, tint: Int, ground: Int, pack: String = "", shape: IconShape? = null): ImageBitmap {
+        val key = iconKey(app, sizePx, themed, pack) + ":" + shape
         icons.get(key)?.let { return it }
-        val made = withContext(Dispatchers.Default) { render(app.info.getIcon(0), sizePx, themed, tint, ground) }
+        val made = withContext(Dispatchers.Default) {
+            val packed = IconPacks.drawable(context, pack, app.component)
+            val raw = if (packed != null) renderPacked(packed, sizePx) else render(app.info.getIcon(0), sizePx, themed, tint, ground)
+            if (shape != null && packed == null) mask(raw, shape) else raw
+        }
         icons.put(key, made)
         return made
     }
@@ -173,7 +179,35 @@ class AppCatalog(private val context: Context, private val scope: CoroutineScope
         return picked.take(DOCK_SIZE)
     }
 
-    private fun iconKey(app: AppEntry, sizePx: Int, themed: Boolean) = "${app.key}:$sizePx:$themed"
+    private fun iconKey(app: AppEntry, sizePx: Int, themed: Boolean, pack: String = "") = "${app.key}:$sizePx:$themed:$pack"
+
+    private fun mask(source: ImageBitmap, shape: IconShape): ImageBitmap {
+        val size = source.width
+        val out = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(out)
+        val path = LumenShapes.polygon(shape).toPath()
+        path.transform(android.graphics.Matrix().apply { setScale(size.toFloat(), size.toFloat()) })
+        val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
+        canvas.drawPath(path, paint)
+        paint.xfermode = android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.SRC_IN)
+        canvas.drawBitmap(source.asAndroidBitmap(), 0f, 0f, paint)
+        return out.asImageBitmap()
+    }
+
+    private fun renderPacked(drawable: Drawable, size: Int): ImageBitmap {
+        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val adaptive = drawable as? AdaptiveIconDrawable
+        val canvas = Canvas(bitmap)
+        if (adaptive != null) {
+            val outer = (size * 0.25f).toInt()
+            adaptive.background?.let { it.setBounds(-outer, -outer, size + outer, size + outer); it.draw(canvas) }
+            adaptive.foreground?.let { it.setBounds(-outer, -outer, size + outer, size + outer); it.draw(canvas) }
+        } else {
+            drawable.setBounds(0, 0, size, size)
+            drawable.draw(canvas)
+        }
+        return bitmap.asImageBitmap()
+    }
 
     private fun render(drawable: Drawable, size: Int, themed: Boolean, tint: Int, ground: Int): ImageBitmap {
         val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)

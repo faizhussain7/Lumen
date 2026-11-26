@@ -50,6 +50,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -209,6 +210,7 @@ fun CustomisePage(catalog: AppCatalog, prefs: LumenPrefs, progress: () -> Float,
                         Spacer(Modifier.width(12.dp))
                         Switch(checked = prefs.weatherState.value, onCheckedChange = null)
                     }
+                    if (prefs.weatherState.value) WeatherSetup()
                     Toggle(stringResource(R.string.opt_show_chips), null, prefs.showChipsState, prefs)
                 }
             }
@@ -216,6 +218,8 @@ fun CustomisePage(catalog: AppCatalog, prefs: LumenPrefs, progress: () -> Float,
                 Card(stringResource(R.string.section_home)) {
                     Label(stringResource(R.string.opt_home_columns))
                     Choices((3..7).toList(), prefs.homeColumnsState.value, { "$it" }) { prefs.set(prefs.homeColumnsState, it) }
+                    Label(stringResource(R.string.opt_pages))
+                    Choices((1..5).toList(), prefs.pagesState.value, { "$it" }) { prefs.set(prefs.pagesState, it) }
                     Label(stringResource(R.string.opt_home_rows))
                     Choices((3..8).toList(), prefs.homeRowsState.value, { "$it" }) { prefs.set(prefs.homeRowsState, it) }
                     SliderRow(stringResource(R.string.opt_icon_size), prefs.iconScaleState.value) { prefs.set(prefs.iconScaleState, it) }
@@ -250,6 +254,10 @@ fun CustomisePage(catalog: AppCatalog, prefs: LumenPrefs, progress: () -> Float,
                         }
                     }
                     Toggle(stringResource(R.string.settings_themed_icons), stringResource(R.string.settings_themed_icons_caption), prefs.themedState, prefs)
+                    val packs = remember { IconPacks.installed(context) }
+                    Label(stringResource(R.string.opt_icon_pack))
+                    Choices(listOf(IconPackInfo("", context.getString(R.string.opt_icon_pack_system))) + packs, packs.firstOrNull { it.packageName == prefs.iconPack } ?: IconPackInfo("", ""), { it.label }) { prefs.updateIconPack(it.packageName) }
+                    if (packs.isEmpty()) Text(stringResource(R.string.opt_icon_pack_none), style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant)
                 }
             }
             item {
@@ -422,6 +430,20 @@ fun CustomisePage(catalog: AppCatalog, prefs: LumenPrefs, progress: () -> Float,
                         shape = CircleShape,
                         modifier = Modifier.fillMaxWidth().height(52.dp),
                     ) { Text(stringResource(R.string.opt_export)) }
+                    Spacer(Modifier.height(8.dp))
+                    Button(
+                        onClick = {
+                            val text = context.getSystemService(ClipboardManager::class.java)?.primaryClip?.getItemAt(0)?.coerceToText(context)?.toString().orEmpty()
+                            if (prefs.import(text)) {
+                                Toast.makeText(context, R.string.opt_restored, Toast.LENGTH_SHORT).show()
+                                (context as? android.app.Activity)?.recreate()
+                            } else {
+                                Toast.makeText(context, R.string.opt_restore_failed, Toast.LENGTH_LONG).show()
+                            }
+                        },
+                        shape = CircleShape,
+                        modifier = Modifier.fillMaxWidth().height(52.dp),
+                    ) { Text(stringResource(R.string.opt_restore)) }
                 }
             }
         }
@@ -641,5 +663,81 @@ private fun MotionDemo(prefs: LumenPrefs) {
                 .clip(PolygonShape(LumenShapes.softBurst, x.value * 120f))
                 .background(Brush.linearGradient(listOf(scheme.primary, scheme.tertiary))),
         )
+    }
+}
+
+@Composable
+private fun WeatherSetup() {
+    val scheme = MaterialTheme.colorScheme
+    val context = LocalContext.current
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val status by Weather.status.collectAsState()
+    val now by Weather.state.collectAsState()
+    var place by remember { mutableStateOf(Weather.manualPlace(context)) }
+    var query by remember { mutableStateOf("") }
+    var results by remember { mutableStateOf(emptyList<Place>()) }
+    LaunchedEffect(query) {
+        kotlinx.coroutines.delay(350)
+        results = Weather.searchPlaces(query)
+    }
+    LaunchedEffect(place) { Weather.refresh(context, force = true) }
+    Column(Modifier.fillMaxWidth().padding(top = 6.dp).clip(RoundedCornerShape(20.dp)).background(scheme.surfaceContainerHighest).padding(14.dp)) {
+        val line = when {
+            status == WeatherStatus.Ok && now != null -> "${now!!.temperature}° · " + weatherLabel(now!!) + (place?.let { " · ${it.name}" } ?: "")
+            status == WeatherStatus.LocationOff -> stringResource(R.string.weather_location_off)
+            status == WeatherStatus.NoPermission -> stringResource(R.string.weather_no_permission)
+            status == WeatherStatus.NoFix -> stringResource(R.string.weather_no_fix)
+            status == WeatherStatus.Offline -> stringResource(R.string.weather_offline)
+            else -> stringResource(R.string.weather_loading)
+        }
+        Text(line, style = MaterialTheme.typography.titleSmall, color = if (status == WeatherStatus.Ok) scheme.onSurface else scheme.error)
+        if (status == WeatherStatus.LocationOff && place == null) {
+            Spacer(Modifier.height(8.dp))
+            FabPill(stringResource(R.string.weather_turn_on), Glyph.Location) {
+                runCatching { context.startActivity(android.content.Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) }
+            }
+        }
+        Spacer(Modifier.height(10.dp))
+        Text(stringResource(R.string.weather_city), style = MaterialTheme.typography.labelLarge, color = scheme.onSurfaceVariant)
+        Spacer(Modifier.height(6.dp))
+        if (place != null) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(place!!.name, style = MaterialTheme.typography.bodyLarge, color = scheme.onSurface, modifier = Modifier.weight(1f))
+                FabPill(stringResource(R.string.weather_use_location), Glyph.Location) {
+                    Weather.setManualPlace(context, null)
+                    place = null
+                }
+            }
+        } else {
+            Box(Modifier.fillMaxWidth().height(50.dp).clip(CircleShape).background(scheme.surfaceContainerLow).padding(horizontal = 18.dp), contentAlignment = Alignment.CenterStart) {
+                if (query.isEmpty()) Text(stringResource(R.string.weather_city_hint), style = MaterialTheme.typography.bodyLarge, color = scheme.onSurfaceVariant)
+                androidx.compose.foundation.text.BasicTextField(
+                    value = query,
+                    onValueChange = { query = it.take(40) },
+                    singleLine = true,
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(color = scheme.onSurface),
+                    cursorBrush = androidx.compose.ui.graphics.SolidColor(scheme.primary),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            results.forEach { r ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).clickable {
+                        Weather.setManualPlace(context, r)
+                        place = r
+                        query = ""
+                        results = emptyList()
+                    }.padding(horizontal = 8.dp, vertical = 10.dp),
+                ) {
+                    GlyphIcon(Glyph.Location, scheme.primary, 20.dp)
+                    Spacer(Modifier.width(10.dp))
+                    Column {
+                        Text(r.name, style = MaterialTheme.typography.bodyLarge, color = scheme.onSurface)
+                        if (r.detail.isNotBlank()) Text(r.detail, style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant)
+                    }
+                }
+            }
+        }
     }
 }

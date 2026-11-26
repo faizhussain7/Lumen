@@ -132,7 +132,7 @@ class MainActivity : ComponentActivity() {
             cancelWidget()
             return
         }
-        prefs.updateHome(prefs.home + HomeItem("w$pendingWidget", null, pendingWidget, spot.first, spot.second, w, h))
+        prefs.updateHome(prefs.home + HomeItem("w$pendingWidget", null, pendingWidget, spot.first, spot.second, w, h, HomePager.page))
         pendingWidget = -1
         pendingInfo = null
     }

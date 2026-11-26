@@ -60,8 +60,10 @@ fun AppIcon(
     val px = with(LocalDensity.current) { size.roundToPx() }
     val tint = scheme.onPrimaryContainer.toArgb()
     val ground = scheme.primaryContainer.toArgb()
-    val bitmap by produceState(catalog.cachedIcon(app, px, prefs.themed), app.key, px, prefs.themed, tint, ground) {
-        value = catalog.icon(app, px, prefs.themed, tint, ground)
+    val pack = prefs.iconPack
+    val shapeKey = prefs.shape
+    val bitmap by produceState(catalog.cachedIcon(app, px, prefs.themed, pack, shapeKey), app.key, px, prefs.themed, tint, ground, pack, shapeKey) {
+        value = catalog.icon(app, px, prefs.themed, tint, ground, pack, shapeKey)
     }
     var pressed by remember { mutableStateOf(false) }
     var bounds by remember { mutableStateOf<Rect?>(null) }
@@ -103,10 +105,11 @@ fun AppIcon(
                 .graphicsLayer {
                     scaleX = scale
                     scaleY = scale
-                    shape = if (progress < 0.001f) restShape else MorphShape(morph, progress, progress * 30f)
-                    clip = true
+                    val pressing = progress >= 0.001f
+                    shape = if (pressing) MorphShape(morph, progress, progress * 30f) else restShape
+                    clip = pressing || bitmap == null
                 }
-                .background(scheme.surfaceContainerHigh),
+                .then(if (bitmap == null) Modifier.background(scheme.surfaceContainerHigh) else Modifier),
         ) {
             bitmap?.let { Image(it, contentDescription = null, modifier = Modifier.size(size)) }
         }

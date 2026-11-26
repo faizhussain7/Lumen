@@ -40,23 +40,78 @@ import java.util.Locale
 
 class WeatherNow(val temperature: Int, val code: Int, val day: Boolean)
 
+enum class WeatherStatus { Idle, Ok, NoPermission, LocationOff, NoFix, Offline }
+
+class Place(val name: String, val detail: String, val lat: Double, val lon: Double)
+
 object Weather {
     val state = MutableStateFlow<WeatherNow?>(null)
+    val status = MutableStateFlow(WeatherStatus.Idle)
     private var fetchedAt = 0L
 
     fun permitted(context: Context) = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
 
+    private fun prefs(context: Context) = context.getSharedPreferences("lumen", Context.MODE_PRIVATE)
+
+    fun manualPlace(context: Context): Place? {
+        val p = prefs(context)
+        val name = p.getString("weather_city", null) ?: return null
+        return Place(name, "", p.getFloat("weather_lat", 0f).toDouble(), p.getFloat("weather_lon", 0f).toDouble())
+    }
+
+    fun setManualPlace(context: Context, place: Place?) {
+        val e = prefs(context).edit()
+        if (place == null) e.remove("weather_city").remove("weather_lat").remove("weather_lon")
+        else e.putString("weather_city", place.name).putFloat("weather_lat", place.lat.toFloat()).putFloat("weather_lon", place.lon.toFloat())
+        e.apply()
+        fetchedAt = 0L
+    }
+
+    suspend fun searchPlaces(query: String): List<Place> = withContext(Dispatchers.IO) {
+        if (query.trim().length < 2) return@withContext emptyList()
+        runCatching {
+            val url = URL("https://geocoding-api.open-meteo.com/v1/search?count=6&language=" + Locale.getDefault().language + "&name=" + java.net.URLEncoder.encode(query.trim(), "UTF-8"))
+            val body = (url.openConnection() as HttpURLConnection).apply { connectTimeout = 8000; readTimeout = 8000 }.inputStream.bufferedReader().use { it.readText() }
+            val results = JSONObject(body).optJSONArray("results") ?: return@runCatching emptyList()
+            (0 until results.length()).map { i ->
+                val o = results.getJSONObject(i)
+                Place(o.getString("name"), listOfNotNull(o.optString("admin1").ifBlank { null }, o.optString("country").ifBlank { null }).joinToString(", "), o.getDouble("latitude"), o.getDouble("longitude"))
+            }
+        }.getOrDefault(emptyList())
+    }
+
+    @android.annotation.SuppressLint("MissingPermission")
+    private suspend fun deviceLocation(context: Context): Pair<Double, Double>? {
+        val lm = context.getSystemService(LocationManager::class.java)
+        val known = listOf(LocationManager.FUSED_PROVIDER, LocationManager.NETWORK_PROVIDER, LocationManager.PASSIVE_PROVIDER, LocationManager.GPS_PROVIDER)
+            .mapNotNull { runCatching { lm.getLastKnownLocation(it) }.getOrNull() }
+            .maxByOrNull { it.time }
+        if (known != null) return known.latitude to known.longitude
+        val provider = listOf(LocationManager.FUSED_PROVIDER, LocationManager.NETWORK_PROVIDER).firstOrNull { runCatching { lm.isProviderEnabled(it) }.getOrDefault(false) } ?: return null
+        return kotlinx.coroutines.withTimeoutOrNull(12_000) {
+            kotlinx.coroutines.suspendCancellableCoroutine { cont ->
+                val signal = android.os.CancellationSignal()
+                cont.invokeOnCancellation { signal.cancel() }
+                runCatching {
+                    lm.getCurrentLocation(provider, signal, context.mainExecutor) { loc -> if (cont.isActive) cont.resumeWith(Result.success(loc?.let { it.latitude to it.longitude })) }
+                }.onFailure { if (cont.isActive) cont.resumeWith(Result.success(null)) }
+            }
+        }
+    }
+
     suspend fun refresh(context: Context, force: Boolean = false) {
-        if (!permitted(context)) return
         if (!force && System.currentTimeMillis() - fetchedAt < 30 * 60_000L && state.value != null) return
+        val manual = manualPlace(context)
+        val coords: Pair<Double, Double> = when {
+            manual != null -> manual.lat to manual.lon
+            !permitted(context) -> { status.value = WeatherStatus.NoPermission; return }
+            !context.getSystemService(LocationManager::class.java).isLocationEnabled -> { status.value = WeatherStatus.LocationOff; return }
+            else -> deviceLocation(context) ?: run { status.value = WeatherStatus.NoFix; return }
+        }
         val result = withContext(Dispatchers.IO) {
             runCatching {
-                val lm = context.getSystemService(LocationManager::class.java)
-                val location = listOf(LocationManager.NETWORK_PROVIDER, LocationManager.PASSIVE_PROVIDER, LocationManager.GPS_PROVIDER)
-                    .mapNotNull { runCatching { lm.getLastKnownLocation(it) }.getOrNull() }
-                    .maxByOrNull { it.time } ?: return@runCatching null
-                val lat = "%.1f".format(Locale.US, location.latitude)
-                val lon = "%.1f".format(Locale.US, location.longitude)
+                val lat = "%.1f".format(Locale.US, coords.first)
+                val lon = "%.1f".format(Locale.US, coords.second)
                 val fahrenheit = Locale.getDefault().country in setOf("US", "LR", "MM")
                 val url = URL("https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lon&current=temperature_2m,weather_code,is_day" + if (fahrenheit) "&temperature_unit=fahrenheit" else "")
                 val connection = (url.openConnection() as HttpURLConnection).apply { connectTimeout = 8000; readTimeout = 8000 }
@@ -67,7 +122,10 @@ object Weather {
         }
         if (result != null) {
             state.value = result
+            status.value = WeatherStatus.Ok
             fetchedAt = System.currentTimeMillis()
+        } else {
+            status.value = WeatherStatus.Offline
         }
     }
 }
@@ -79,7 +137,7 @@ fun rememberWeather(enabled: Boolean): WeatherNow? {
     LaunchedEffect(enabled) {
         while (enabled) {
             Weather.refresh(context)
-            delay(10 * 60_000L)
+            delay(if (Weather.status.value == WeatherStatus.Ok) 10 * 60_000L else 60_000L)
         }
     }
     return if (enabled) now else null

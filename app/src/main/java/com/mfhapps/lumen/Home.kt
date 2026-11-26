@@ -146,6 +146,7 @@ fun LumenHome(
     var menu by remember { mutableStateOf<Triple<AppEntry, Rect?, String?>?>(null) }
     var homeMenu by remember { mutableStateOf<Offset?>(null) }
     var picker by remember { mutableStateOf(false) }
+    var openFolder by remember { mutableStateOf<String?>(null) }
     var searchFocus by remember { mutableStateOf(false) }
     var glowPoint by remember { mutableStateOf(Offset.Zero) }
     var touching by remember { mutableStateOf(false) }
@@ -423,8 +424,8 @@ fun LumenHome(
                     Row(Modifier.weight(1f)) {
                         ClockArea(prefs.clock, ink, Modifier.weight(0.42f).verticalScroll(androidx.compose.foundation.rememberScrollState()).padding(start = 28.dp, top = 8.dp, end = 12.dp), prefs)
                         Column(Modifier.weight(0.58f).fillMaxHeight()) {
-                            WorkspaceGrid(catalog, prefs, ink, onLaunch = launch, onMenu = { app, bounds, id -> menu = Triple(app, bounds, id) }, modifier = Modifier.weight(1f).padding(8.dp))
-                            Island(catalog, prefs, onPlaced = { if (drawer.value == 0f && customise.value == 0f && control.value == 0f) islandRect = it }, onLaunch = launch, onMenu = { app, bounds -> menu = Triple(app, bounds, null) }, onSearch = { openDrawer(true) }, onCustomise = ::openCustomise)
+                            WorkspaceGrid(catalog, prefs, ink, onLaunch = launch, onMenu = { app, bounds, id -> menu = Triple(app, bounds, id) }, onOpenFolder = { openFolder = it }, modifier = Modifier.weight(1f).padding(8.dp))
+                            Island(catalog, prefs, onPlaced = { if (drawer.value == 0f && customise.value == 0f && control.value == 0f) islandRect = it }, onLaunch = launch, onMenu = { app, bounds -> menu = Triple(app, bounds, null) }, onSearch = { openDrawer(true) }, onCustomise = ::openCustomise, onOpenFolder = { openFolder = it })
                             Spacer(Modifier.height(10.dp))
                         }
                     }
@@ -436,11 +437,12 @@ fun LumenHome(
                         ink,
                         onLaunch = launch,
                         onMenu = { app, bounds, id -> menu = Triple(app, bounds, id) },
+                        onOpenFolder = { openFolder = it },
                         modifier = Modifier.weight(1f).padding(horizontal = 8.dp, vertical = 12.dp),
                     )
                 }
                 if (!wide) {
-                    Island(catalog, prefs, onPlaced = { if (drawer.value == 0f && customise.value == 0f && control.value == 0f) islandRect = it }, onLaunch = launch, onMenu = { app, bounds -> menu = Triple(app, bounds, null) }, onSearch = { openDrawer(true) }, onCustomise = ::openCustomise)
+                    Island(catalog, prefs, onPlaced = { if (drawer.value == 0f && customise.value == 0f && control.value == 0f) islandRect = it }, onLaunch = launch, onMenu = { app, bounds -> menu = Triple(app, bounds, null) }, onSearch = { openDrawer(true) }, onCustomise = ::openCustomise, onOpenFolder = { openFolder = it })
                     Spacer(Modifier.height(12.dp))
                 }
             }
@@ -504,6 +506,7 @@ fun LumenHome(
                 onDismiss = { homeMenu = null },
             )
         }
+        openFolder?.let { id -> prefs.folders[id]?.let { f -> FolderSheet(f, catalog, prefs, onLaunch = launch, onDismiss = { openFolder = null }) } ?: run { openFolder = null } }
         if (picker) WidgetPicker(
             onPick = { info -> picker = false; onAddWidget(info) },
             onBuiltIn = { id ->
@@ -524,9 +527,11 @@ private fun Island(
     onMenu: (AppEntry, Rect?) -> Unit,
     onSearch: () -> Unit,
     onCustomise: () -> Unit,
+    onOpenFolder: (String) -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
-    val apps = prefs.dock.orEmpty().mapNotNull { key -> catalog.apps.firstOrNull { it.key == key } }
+    val dockKeys = prefs.dock.orEmpty()
+    val apps = dockKeys.mapNotNull { key -> catalog.apps.firstOrNull { it.key == key } }
     val style = prefs.dockStyleState.value
     val shape = RoundedCornerShape(34.dp)
     val iconSize = (54f * (0.8f + prefs.iconScaleState.value * 0.4f)).dp
@@ -547,10 +552,15 @@ private fun Island(
             .then(if (style == DockStyle.Glass) Modifier.border(1.dp, Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.24f), Color.White.copy(alpha = 0.03f))), shape) else Modifier)
             .padding(start = 10.dp, end = 10.dp, top = 14.dp, bottom = 10.dp),
     ) {
-        if (apps.isNotEmpty() && style != DockStyle.Hidden) {
+        if (dockKeys.isNotEmpty() && style != DockStyle.Hidden) {
             Row(horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                apps.forEach { app ->
-                    AppIcon(app, catalog, prefs, iconSize, showLabel = false, labelColor = Color.White, onLaunch = { onLaunch(app, it) }, onMenu = { onMenu(app, it) })
+                dockKeys.forEach { key ->
+                    val folder = if (key.startsWith(Folder.PREFIX)) prefs.folders[key.removePrefix(Folder.PREFIX)] else null
+                    val app = if (folder == null) catalog.apps.firstOrNull { it.key == key } else null
+                    when {
+                        folder != null -> FolderIcon(folder, catalog, prefs, iconSize, false, Color.White, onOpen = { onOpenFolder(folder.id) })
+                        app != null -> AppIcon(app, catalog, prefs, iconSize, showLabel = false, labelColor = Color.White, onLaunch = { onLaunch(app, it) }, onMenu = { onMenu(app, it) })
+                    }
                 }
             }
             if (prefs.dockSearchState.value) Spacer(Modifier.height(12.dp))
@@ -965,10 +975,13 @@ private fun LetterRail(letters: List<Char>, modifier: Modifier, onLetter: (Char)
 
 class ProgressRef { var value = 0f }
 
-private fun rank(apps: List<AppEntry>, query: String): List<AppEntry> {
+private fun rank(apps: List<AppEntry>, query: String): List<AppEntry> = rankBy(apps, query) { it.label }
+
+internal fun <T> rankBy(items: List<T>, query: String, label: (T) -> String): List<T> {
     val q = query.trim().lowercase()
-    fun score(label: String): Int {
-        val l = label.lowercase()
+    if (q.isEmpty()) return items
+    fun score(text: String): Int {
+        val l = text.lowercase()
         if (l.startsWith(q)) return 0
         val words = l.split(' ', '-', '.', '_').filter { it.isNotEmpty() }
         if (words.any { it.startsWith(q) }) return 1
@@ -978,7 +991,7 @@ private fun rank(apps: List<AppEntry>, query: String): List<AppEntry> {
         for (ch in l) if (i < q.length && ch == q[i]) i++
         return if (i == q.length) 4 else Int.MAX_VALUE
     }
-    return apps.map { it to score(it.label) }.filter { it.second != Int.MAX_VALUE }.sortedBy { it.second }.map { it.first }
+    return items.map { it to score(label(it)) }.filter { it.second != Int.MAX_VALUE }.sortedBy { it.second }.map { it.first }
 }
 
 private fun webSearch(context: android.content.Context, query: String) {
@@ -1021,11 +1034,17 @@ private fun AppMenu(app: AppEntry, bounds: Rect?, homeId: String?, catalog: AppC
         add(ToolbarAction(Glyph.Info, context.getString(R.string.app_info)) { catalog.openInfo(app, bounds); onDismiss() })
         if (homeId != null) {
             add(ToolbarAction(Glyph.Home, context.getString(R.string.remove_from_home), active = true) { prefs.updateHome(prefs.home.filter { it.id != homeId }); onDismiss() })
+            val item = prefs.home.firstOrNull { it.id == homeId }
+            val pages = prefs.pagesState.value
+            if (item != null && pages > 1) {
+                if (item.page < pages - 1) add(ToolbarAction(Glyph.Next, context.getString(R.string.move_next_page)) { moveToPage(prefs, item, item.page + 1, context); onDismiss() })
+                if (item.page > 0) add(ToolbarAction(Glyph.Back, context.getString(R.string.move_previous_page)) { moveToPage(prefs, item, item.page - 1, context); onDismiss() })
+            }
         } else {
             add(ToolbarAction(Glyph.Home, context.getString(R.string.add_to_home)) {
                 val spot = freeSpot(prefs.home, prefs.homeColumnsState.value, prefs.homeRowsState.value, 1, 1)
                 if (spot == null) Toast.makeText(context, R.string.home_full, Toast.LENGTH_SHORT).show()
-                else prefs.updateHome(prefs.home + HomeItem("a" + System.nanoTime(), app.key, -1, spot.first, spot.second, 1, 1))
+                else prefs.updateHome(prefs.home + HomeItem("a" + System.nanoTime(), app.key, -1, spot.first, spot.second, 1, 1, HomePager.page))
                 onDismiss()
             })
         }
@@ -1115,4 +1134,13 @@ class RevealShape(private val from: androidx.compose.ui.geometry.Rect, private v
             ),
         )
     }
+}
+
+private fun moveToPage(prefs: LumenPrefs, item: HomeItem, page: Int, context: android.content.Context) {
+    val spot = freeSpot(prefs.home, prefs.homeColumnsState.value, prefs.homeRowsState.value, item.w, item.h, item.id, page)
+    if (spot == null) {
+        Toast.makeText(context, R.string.home_full, Toast.LENGTH_SHORT).show()
+        return
+    }
+    prefs.updateHome(prefs.home.map { if (it.id == item.id) HomeItem(it.id, it.app, it.widget, spot.first, spot.second, it.w, it.h, page) else it })
 }

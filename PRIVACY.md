@@ -14,7 +14,8 @@ Lumen makes exactly one kind of network request, and only if you turn on **Weath
 
 - Your approximate location, rounded to one decimal place (about 10 km), is sent to the
   [Open-Meteo API](https://open-meteo.com/) to fetch the current temperature and conditions.
-- No identifiers are sent. Open-Meteo's own privacy policy applies to that request.
+- If you choose a city instead, the city name you type is sent to Open-Meteo's geocoding API to find it, and its coordinates are then used for the weather.
+- No identifiers are sent. Open-Meteo's own privacy policy applies to these requests.
 
 Web, YouTube, Maps, Play Store and settings searches open the corresponding app on your device; Lumen does not send those queries anywhere itself.
 

@@ -26,11 +26,20 @@ enum class LockNotices { Icons, Cards, Hidden }
 
 enum class LockShortcut { None, Torch, Camera, DoNotDisturb, Voice }
 
-class HomeItem(val id: String, val app: String?, val widget: Int, var x: Int, var y: Int, var w: Int, var h: Int) {
-    fun toJson(): JSONObject = JSONObject().put("id", id).put("app", app ?: "").put("widget", widget).put("x", x).put("y", y).put("w", w).put("h", h)
+class HomeItem(val id: String, val app: String?, val widget: Int, var x: Int, var y: Int, var w: Int, var h: Int, var page: Int = 0) {
+    fun toJson(): JSONObject = JSONObject().put("id", id).put("app", app ?: "").put("widget", widget).put("x", x).put("y", y).put("w", w).put("h", h).put("page", page)
 
     companion object {
-        fun from(o: JSONObject) = HomeItem(o.getString("id"), o.optString("app").ifEmpty { null }, o.optInt("widget", -1), o.getInt("x"), o.getInt("y"), o.getInt("w"), o.getInt("h"))
+        fun from(o: JSONObject) = HomeItem(o.getString("id"), o.optString("app").ifEmpty { null }, o.optInt("widget", -1), o.getInt("x"), o.getInt("y"), o.getInt("w"), o.getInt("h"), o.optInt("page", 0))
+    }
+}
+
+class Folder(val id: String, val title: String, val apps: List<String>) {
+    fun toJson(): JSONObject = JSONObject().put("id", id).put("title", title).put("apps", JSONArray(apps))
+
+    companion object {
+        const val PREFIX = "f:"
+        fun from(o: JSONObject) = Folder(o.getString("id"), o.optString("title"), o.getJSONArray("apps").let { a -> (0 until a.length()).map { a.getString(it) } })
     }
 }
 
@@ -183,8 +192,33 @@ class LumenPrefs(context: Context) {
     }.getOrDefault(emptyList())
 
     fun updateHome(items: List<HomeItem>) {
-        home = items.map { HomeItem(it.id, it.app, it.widget, it.x, it.y, it.w, it.h) }
+        home = items.map { HomeItem(it.id, it.app, it.widget, it.x, it.y, it.w, it.h, it.page) }
         store.edit().putString(KEY_HOME, JSONArray(home.map { it.toJson() }).toString()).apply()
+    }
+
+    val pagesState = int("pages", 1)
+    var iconPack by mutableStateOf(store.getString("icon_pack", "") ?: "")
+        private set
+
+    fun updateIconPack(pkg: String) {
+        iconPack = pkg
+        store.edit().putString("icon_pack", pkg).apply()
+    }
+
+    var folders by mutableStateOf(readFolders())
+        private set
+
+    private fun readFolders(): Map<String, Folder> = runCatching {
+        val array = JSONArray(store.getString("folders", "[]"))
+        (0 until array.length()).map { Folder.from(array.getJSONObject(it)) }.associateBy { it.id }
+    }.getOrDefault(emptyMap())
+
+    fun saveFolder(folder: Folder?, removeId: String? = null) {
+        val next = folders.toMutableMap()
+        removeId?.let { next.remove(it) }
+        folder?.let { next[it.id] = it }
+        folders = next
+        store.edit().putString("folders", JSONArray(next.values.map { it.toJson() }).toString()).apply()
     }
 
     private val launches: SharedPreferences = context.getSharedPreferences("lumen_launches", Context.MODE_PRIVATE)
@@ -201,7 +235,41 @@ class LumenPrefs(context: Context) {
     fun topLaunched(limit: Int): List<String> =
         launches.all.entries.mapNotNull { (k, v) -> (v as? Int)?.let { k to it } }.sortedByDescending { it.second }.take(limit).map { it.first }
 
-    fun export(): String = JSONObject(store.all.mapValues { (_, v) -> if (v is Set<*>) JSONArray(v.toList()) else v }).toString()
+    fun export(): String {
+        val out = JSONObject().put("lumen", 1)
+        store.all.forEach { (k, v) ->
+            val entry = when (v) {
+                is Boolean -> JSONObject().put("t", "b").put("v", v)
+                is Int -> JSONObject().put("t", "i").put("v", v)
+                is Long -> JSONObject().put("t", "l").put("v", v)
+                is Float -> JSONObject().put("t", "f").put("v", v.toDouble())
+                is String -> JSONObject().put("t", "s").put("v", v)
+                is Set<*> -> JSONObject().put("t", "set").put("v", JSONArray(v.toList()))
+                else -> null
+            }
+            if (entry != null) out.put(k, entry)
+        }
+        return out.toString()
+    }
+
+    fun import(text: String): Boolean = runCatching {
+        val o = JSONObject(text.trim())
+        require(o.optInt("lumen") == 1)
+        val editor = store.edit().clear()
+        o.keys().forEach { k ->
+            if (k == "lumen") return@forEach
+            val e = o.getJSONObject(k)
+            when (e.getString("t")) {
+                "b" -> editor.putBoolean(k, e.getBoolean("v"))
+                "i" -> editor.putInt(k, e.getInt("v"))
+                "l" -> editor.putLong(k, e.getLong("v"))
+                "f" -> editor.putFloat(k, e.getDouble("v").toFloat())
+                "s" -> editor.putString(k, e.getString("v"))
+                "set" -> editor.putStringSet(k, e.getJSONArray("v").let { a -> (0 until a.length()).map { a.getString(it) }.toSet() })
+            }
+        }
+        editor.commit()
+    }.isSuccess
 
     private companion object {
         const val KEY_DOCK = "dock"

@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+
 package com.mfhapps.lumen
 
 import android.appwidget.AppWidgetHost
@@ -56,6 +58,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -141,13 +145,13 @@ val BUILT_IN = setOf(WIDGET_CLOCK, WIDGET_DATE, WIDGET_BATTERY, WIDGET_WEATHER)
 fun addBuiltIn(prefs: LumenPrefs, widget: Int): Boolean {
     val span = if (widget == WIDGET_CLOCK) 2 else 2
     val spot = freeSpot(prefs.home, prefs.homeColumnsState.value, prefs.homeRowsState.value, span, span) ?: return false
-    prefs.updateHome(prefs.home + HomeItem("b" + System.nanoTime(), null, widget, spot.first, spot.second, span, span))
+    prefs.updateHome(prefs.home + HomeItem("b" + System.nanoTime(), null, widget, spot.first, spot.second, span, span, HomePager.page))
     return true
 }
 
-fun freeSpot(items: List<HomeItem>, columns: Int, rows: Int, w: Int, h: Int, ignore: String? = null): Pair<Int, Int>? {
+fun freeSpot(items: List<HomeItem>, columns: Int, rows: Int, w: Int, h: Int, ignore: String? = null, page: Int = HomePager.page): Pair<Int, Int>? {
     for (y in 0..rows - h) for (x in 0..columns - w) {
-        if (items.none { it.id != ignore && overlaps(it, x, y, w, h) }) return x to y
+        if (items.none { it.page == page && it.id != ignore && overlaps(it, x, y, w, h) }) return x to y
     }
     return null
 }
@@ -155,6 +159,129 @@ fun freeSpot(items: List<HomeItem>, columns: Int, rows: Int, w: Int, h: Int, ign
 fun overlaps(item: HomeItem, x: Int, y: Int, w: Int, h: Int): Boolean =
     x < item.x + item.w && item.x < x + w && y < item.y + item.h && item.y < y + h
 
+object HomePager {
+    var page by androidx.compose.runtime.mutableIntStateOf(0)
+}
+
+@Composable
+fun MiniIcon(app: AppEntry, catalog: AppCatalog, prefs: LumenPrefs, size: androidx.compose.ui.unit.Dp) {
+    val scheme = MaterialTheme.colorScheme
+    val px = with(LocalDensity.current) { size.roundToPx() }
+    val tint = scheme.onPrimaryContainer.toArgb()
+    val ground = scheme.primaryContainer.toArgb()
+    val bitmap by produceState(catalog.cachedIcon(app, px, prefs.themed, prefs.iconPack, prefs.shape), app.key, px, prefs.iconPack, prefs.shape) {
+        value = catalog.icon(app, px, prefs.themed, tint, ground, prefs.iconPack, prefs.shape)
+    }
+    Box(Modifier.size(size)) { bitmap?.let { Image(it, contentDescription = null, modifier = Modifier.size(size)) } }
+}
+
+@Composable
+fun FolderIcon(folder: Folder, catalog: AppCatalog, prefs: LumenPrefs, size: androidx.compose.ui.unit.Dp, showLabel: Boolean, labelColor: Color, onOpen: () -> Unit, modifier: Modifier = Modifier) {
+    val scheme = MaterialTheme.colorScheme
+    val apps = folder.apps.mapNotNull { key -> catalog.apps.firstOrNull { it.key == key } }
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = modifier.clickable(interactionSource = null, indication = null, onClick = onOpen)) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier.size(size).clip(RoundedCornerShape(size * 0.32f)).background(scheme.surfaceContainerHighest.copy(alpha = 0.92f)),
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(size * 0.06f)) {
+                apps.take(4).chunked(2).forEach { row ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(size * 0.06f)) { row.forEach { MiniIcon(it, catalog, prefs, size * 0.36f) } }
+                }
+            }
+        }
+        if (showLabel) Text(
+            folder.title.ifBlank { stringResource(R.string.folder) },
+            style = MaterialTheme.typography.labelMedium,
+            color = labelColor,
+            maxLines = 1,
+            modifier = Modifier.padding(top = 6.dp),
+        )
+    }
+}
+
+@Composable
+fun FolderSheet(
+    folder: Folder,
+    catalog: AppCatalog,
+    prefs: LumenPrefs,
+    onLaunch: (AppEntry, Rect?) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val scheme = MaterialTheme.colorScheme
+    val springs = LocalSprings.current
+    var title by remember(folder.id) { mutableStateOf(folder.title) }
+    var editing by remember { mutableStateOf(false) }
+    val enter = remember { androidx.compose.animation.core.Animatable(0f) }
+    androidx.compose.runtime.LaunchedEffect(Unit) { enter.animateTo(1f, springs.spatial()) }
+    val apps = folder.apps.mapNotNull { key -> catalog.apps.firstOrNull { it.key == key } }
+    val dockKey = Folder.PREFIX + folder.id
+    Box(
+        Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.35f * enter.value)).pointerInput(Unit) { detectTapGestures { onDismiss() } },
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            Modifier
+                .padding(24.dp)
+                .widthIn(max = 420.dp)
+                .graphicsLayer { scaleX = 0.8f + 0.2f * enter.value; scaleY = 0.8f + 0.2f * enter.value; alpha = enter.value }
+                .clip(RoundedCornerShape(36.dp))
+                .background(scheme.surfaceContainerHigh)
+                .pointerInput(Unit) { detectTapGestures { } }
+                .padding(20.dp),
+        ) {
+            androidx.compose.foundation.text.BasicTextField(
+                value = title,
+                onValueChange = { title = it.take(30); prefs.saveFolder(Folder(folder.id, title, folder.apps)) },
+                singleLine = true,
+                textStyle = flexStyle(28f, 850, 100, scheme.onSurface),
+                cursorBrush = androidx.compose.ui.graphics.SolidColor(scheme.primary),
+                decorationBox = { inner -> Box { if (title.isEmpty()) Text(stringResource(R.string.folder_rename), style = flexStyle(28f, 500, 100, scheme.onSurfaceVariant)); inner() } },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Spacer(Modifier.height(16.dp))
+            apps.chunked(4).forEach { row ->
+                Row(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
+                    row.forEach { app ->
+                        Box(Modifier.weight(1f), contentAlignment = Alignment.TopEnd) {
+                            AppIcon(app, catalog, prefs, 54.dp, showLabel = true, labelColor = scheme.onSurface, onLaunch = { onDismiss(); onLaunch(app, it) }, onMenu = { editing = true }, modifier = Modifier.fillMaxWidth())
+                            if (editing) Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier.size(24.dp).clip(CircleShape).background(scheme.error).clickable {
+                                    val left = folder.apps - app.key
+                                    if (left.size <= 1) dissolve(prefs, folder, left) else prefs.saveFolder(Folder(folder.id, title, left))
+                                    if (left.size <= 1) onDismiss()
+                                },
+                            ) { GlyphIcon(Glyph.Delete, scheme.onError, 14.dp) }
+                        }
+                    }
+                    repeat(4 - row.size) { Spacer(Modifier.weight(1f)) }
+                }
+            }
+            Spacer(Modifier.height(14.dp))
+            androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                FabPill(stringResource(if (editing) R.string.done else R.string.remove_from_folder), if (editing) Glyph.Check else Glyph.Delete) { editing = !editing }
+                val docked = dockKey in prefs.dock.orEmpty()
+                FabPill(stringResource(if (docked) R.string.remove_from_dock else R.string.add_to_dock), Glyph.Dock) {
+                    val current = prefs.dock.orEmpty()
+                    if (docked) prefs.updateDock(current - dockKey) else if (current.size < AppCatalog.DOCK_SIZE) prefs.updateDock(current + dockKey)
+                }
+            }
+        }
+    }
+}
+
+private fun dissolve(prefs: LumenPrefs, folder: Folder, left: List<String>) {
+    val key = Folder.PREFIX + folder.id
+    val remaining = left.firstOrNull()
+    prefs.updateHome(prefs.home.mapNotNull { item ->
+        if (item.app == key) { if (remaining != null) HomeItem(item.id, remaining, -1, item.x, item.y, 1, 1, item.page) else null } else item
+    })
+    prefs.updateDock(prefs.dock.orEmpty().map { if (it == key) remaining ?: it else it }.filter { it != key })
+    prefs.saveFolder(null, folder.id)
+}
+
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun WorkspaceGrid(
     catalog: AppCatalog,
@@ -162,7 +289,36 @@ fun WorkspaceGrid(
     ink: Color,
     onLaunch: (AppEntry, Rect?) -> Unit,
     onMenu: (AppEntry, Rect?, String?) -> Unit,
+    onOpenFolder: (String) -> Unit,
     modifier: Modifier = Modifier,
+) {
+    val pages = prefs.pagesState.value.coerceAtLeast(1)
+    val pager = androidx.compose.foundation.pager.rememberPagerState(initialPage = HomePager.page.coerceIn(0, pages - 1)) { pages }
+    androidx.compose.runtime.LaunchedEffect(pager.currentPage) { HomePager.page = pager.currentPage }
+    val scheme = MaterialTheme.colorScheme
+    Column(modifier) {
+        androidx.compose.foundation.pager.HorizontalPager(pager, modifier = Modifier.weight(1f).fillMaxWidth(), beyondViewportPageCount = 1) { page ->
+            PageGrid(page, catalog, prefs, ink, onLaunch, onMenu, onOpenFolder)
+        }
+        if (pages > 1) Row(horizontalArrangement = Arrangement.Center, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
+            repeat(pages) { i ->
+                val on = pager.currentPage == i
+                val w by animateFloatAsState(if (on) 22f else 8f, LocalSprings.current.spatial(), label = "dot")
+                Box(Modifier.padding(horizontal = 3.dp).size(width = w.dp, height = 8.dp).clip(CircleShape).background(if (on) ink else ink.copy(alpha = 0.4f)))
+            }
+        }
+    }
+}
+
+@Composable
+private fun PageGrid(
+    page: Int,
+    catalog: AppCatalog,
+    prefs: LumenPrefs,
+    ink: Color,
+    onLaunch: (AppEntry, Rect?) -> Unit,
+    onMenu: (AppEntry, Rect?, String?) -> Unit,
+    onOpenFolder: (String) -> Unit,
 ) {
     val columns = prefs.homeColumnsState.value
     val rows = prefs.homeRowsState.value
@@ -171,13 +327,14 @@ fun WorkspaceGrid(
     var dragging by remember { mutableStateOf<String?>(null) }
     var dragOffset by remember { mutableStateOf(Offset.Zero) }
     var editing by remember { mutableStateOf<String?>(null) }
-    BoxWithConstraints(modifier.fillMaxWidth()) {
+    BoxWithConstraints(Modifier.fillMaxSize()) {
         val cellW = constraints.maxWidth / columns.toFloat()
         val cellH = constraints.maxHeight / rows.toFloat()
         val iconSize = (56f * (0.75f + prefs.iconScaleState.value * 0.5f)).dp
-        prefs.home.forEach { item ->
-            val app = item.app?.let { key -> catalog.apps.firstOrNull { it.key == key } }
-            if (item.app != null && app == null) return@forEach
+        prefs.home.filter { it.page == page }.forEach { item ->
+            val folder = item.app?.takeIf { it.startsWith(Folder.PREFIX) }?.let { prefs.folders[it.removePrefix(Folder.PREFIX)] }
+            val app = if (folder == null) item.app?.let { key -> catalog.apps.firstOrNull { it.key == key } } else null
+            if (item.app != null && app == null && folder == null) return@forEach
             val isDragging = dragging == item.id
             val lift by animateFloatAsState(if (isDragging) 1.08f else 1f, label = "lift")
             Box(
@@ -211,25 +368,43 @@ fun WorkspaceGrid(
                                 val ny = (item.y + (dragOffset.y / cellH).roundToInt()).coerceIn(0, rows - item.h)
                                 val moved = kotlin.math.abs(dragOffset.x) + kotlin.math.abs(dragOffset.y) > 24.dp.toPx()
                                 if (moved) {
-                                    val others = prefs.home.filter { it.id != item.id }
+                                    val others = prefs.home.filter { it.id != item.id && it.page == page }
                                     val blocker = others.filter { overlaps(it, nx, ny, item.w, item.h) }
-                                    val updated = when {
-                                        blocker.isEmpty() -> prefs.home.map { if (it.id == item.id) it.also { m -> m.x = nx; m.y = ny } else it }
-                                        blocker.size == 1 && blocker[0].w == item.w && blocker[0].h == item.h -> prefs.home.map {
-                                            when (it.id) {
-                                                item.id -> it.also { m -> m.x = nx; m.y = ny }
-                                                blocker[0].id -> it.also { m -> m.x = item.x; m.y = item.y }
-                                                else -> it
-                                            }
+                                    val target = blocker.singleOrNull()
+                                    val canMerge = app != null && target != null && target.w == 1 && target.h == 1 && target.app != null
+                                    if (canMerge) {
+                                        val targetKey = target!!.app!!
+                                        if (targetKey.startsWith(Folder.PREFIX)) {
+                                            val f = prefs.folders[targetKey.removePrefix(Folder.PREFIX)]
+                                            if (f != null && app!!.key !in f.apps) prefs.saveFolder(Folder(f.id, f.title, f.apps + app.key))
+                                        } else {
+                                            val id = "d" + System.nanoTime()
+                                            prefs.saveFolder(Folder(id, "", listOf(targetKey, app!!.key)))
+                                            prefs.updateHome(prefs.home.map { if (it.id == target.id) HomeItem(it.id, Folder.PREFIX + id, -1, it.x, it.y, 1, 1, it.page) else it })
                                         }
-                                        else -> null
-                                    }
-                                    if (updated != null) {
-                                        haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
-                                        prefs.updateHome(updated)
+                                        prefs.updateHome(prefs.home.filter { it.id != item.id })
+                                        haptics.performHapticFeedback(HapticFeedbackType.Confirm)
+                                    } else {
+                                        val updated = when {
+                                            blocker.isEmpty() -> prefs.home.map { if (it.id == item.id) it.also { m -> m.x = nx; m.y = ny } else it }
+                                            target != null && target.w == item.w && target.h == item.h -> prefs.home.map {
+                                                when (it.id) {
+                                                    item.id -> it.also { m -> m.x = nx; m.y = ny }
+                                                    target.id -> it.also { m -> m.x = item.x; m.y = item.y }
+                                                    else -> it
+                                                }
+                                            }
+                                            else -> null
+                                        }
+                                        if (updated != null) {
+                                            haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                                            prefs.updateHome(updated)
+                                        }
                                     }
                                 } else if (app != null) {
                                     onMenu(app, null, item.id)
+                                } else if (folder != null) {
+                                    onOpenFolder(folder.id)
                                 } else {
                                     editing = item.id
                                 }
@@ -245,10 +420,10 @@ fun WorkspaceGrid(
                         )
                     },
             ) {
-                if (app != null) {
-                    AppIcon(app, catalog, prefs, iconSize, showLabel = prefs.homeLabelsState.value, labelColor = ink, onLaunch = { onLaunch(app, it) }, onMenu = {})
-                } else {
-                    WidgetCell(item, prefs, editing == item.id, onEdit = { editing = item.id }, onDone = { editing = null }, cellW = cellW, cellH = cellH, columns = columns, rows = rows)
+                when {
+                    folder != null -> FolderIcon(folder, catalog, prefs, iconSize, prefs.homeLabelsState.value, ink, onOpen = { onOpenFolder(folder.id) })
+                    app != null -> AppIcon(app, catalog, prefs, iconSize, showLabel = prefs.homeLabelsState.value, labelColor = ink, onLaunch = { onLaunch(app, it) }, onMenu = {})
+                    else -> WidgetCell(item, prefs, editing == item.id, onEdit = { editing = item.id }, onDone = { editing = null }, cellW = cellW, cellH = cellH, columns = columns, rows = rows)
                 }
             }
         }

@@ -41,6 +41,7 @@ dependencies {
     implementation(libs.compose.material3)
     implementation(libs.graphics.shapes)
     implementation(libs.material.icons)
+    testImplementation(libs.junit)
     implementation(libs.activity.compose)
     implementation(libs.lifecycle.runtime.compose)
 }

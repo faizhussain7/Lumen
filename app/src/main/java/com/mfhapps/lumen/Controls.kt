@@ -17,6 +17,8 @@ import androidx.compose.material.icons.rounded.AirplanemodeActive
 import androidx.compose.material.icons.rounded.BatterySaver
 import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.Call
+import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material.icons.rounded.ChevronLeft
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.material.icons.rounded.CenterFocusStrong
 import androidx.compose.material.icons.rounded.Calculate
@@ -124,7 +126,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 
-enum class Glyph { Wifi, Data, Bluetooth, Torch, Moon, Rotate, Lock, Shot, Sun, Volume, Gear, Camera, Bell, Search, Spark, Alarm, Widgets, Wallpaper, Home, Info, Delete, Hide, Dock, Calculate, Person, Web, Bolt, Mic, Lens, Check, Location, Hotspot, Nfc, Airplane, Saver, Dark, Phone }
+enum class Glyph { Wifi, Data, Bluetooth, Torch, Moon, Rotate, Lock, Shot, Sun, Volume, Gear, Camera, Bell, Search, Spark, Alarm, Widgets, Wallpaper, Home, Info, Delete, Hide, Dock, Calculate, Person, Web, Bolt, Mic, Lens, Check, Location, Hotspot, Nfc, Airplane, Saver, Dark, Phone, Next, Back }
 
 class DeviceState(private val context: Context) {
     var wifi by mutableStateOf(false)
@@ -516,4 +518,6 @@ fun Glyph.vector(): androidx.compose.ui.graphics.vector.ImageVector = when (this
     Glyph.Saver -> Icons.Rounded.BatterySaver
     Glyph.Dark -> Icons.Rounded.DarkMode
     Glyph.Phone -> Icons.Rounded.Call
+    Glyph.Next -> Icons.Rounded.ChevronRight
+    Glyph.Back -> Icons.Rounded.ChevronLeft
 }
