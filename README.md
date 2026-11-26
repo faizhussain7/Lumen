@@ -26,7 +26,7 @@ Shapes that morph, motion driven by springs, and variable type, all on your home
 
 <br>
 
-<a href="docs/video/lumen-film.mp4"><img src="docs/video/poster.jpg" width="720" alt="Watch the Lumen film"></a>
+<a href="docs/video/lumen-film.mp4"><img src="docs/video/lumen-preview.webp" width="720" alt="Lumen in motion: the 3D logo, the exploded home screen, the Customise carousel and live colour changes"></a>
 
 <sub>▶ <a href="docs/video/lumen-film.mp4"><b>Watch the 2-minute film</b></a> · <a href="docs/video/lumen-teaser-vertical.mp4">34-second vertical teaser</a></sub>
 
